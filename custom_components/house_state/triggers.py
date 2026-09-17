@@ -74,7 +74,8 @@ class Triggers:
             return
         should_away = (
             self.config["auto_away"]
-            and self.coordinator.state.presence == "home"
+            and self.config["roles"].get("departure")
+            and self.coordinator.tree.occupied(self.coordinator.state)
             and self.all_away()
         )
         if not should_away:
@@ -84,11 +85,13 @@ class Triggers:
                 self.hass, self.config["auto_away_grace"], self.depart
             )
 
-    async def safe_transition(self, changes, reason):
+    async def safe_transition(self, changes, reason, guard):
         if self.stopped:
             return
         try:
-            await self.coordinator.transition(changes, reason)
+            await self.coordinator.transition(
+                changes, reason, guard=lambda: not self.stopped and guard()
+            )
         except Exception:
             _LOGGER.warning(
                 "House State %s trigger failed; desired state remains pending",
@@ -103,7 +106,9 @@ class Triggers:
             self.reconcile_away()
             return
         reason = None
-        if self.config["auto_return"] and self.coordinator.state.presence != "home":
+        if self.config["auto_return"] and not self.coordinator.tree.occupied(
+            self.coordinator.state
+        ):
             if (
                 entity in self.config["door_entities"]
                 and old
@@ -125,19 +130,40 @@ class Triggers:
                 and new.state == "home"
             ):
                 reason = "presence"
-        if reason:
-            await self.safe_transition({"presence": "home"}, reason)
+        if reason and self.config["roles"].get("arrival"):
+            await self.safe_transition(
+                {"state": self.config["roles"]["arrival"]},
+                reason,
+                lambda: not self.coordinator.tree.occupied(self.coordinator.state),
+            )
         self.reconcile_away()
 
     async def depart(self, now):
         self.away_cancel = None
         if (
             self.config["auto_away"]
-            and self.coordinator.state.presence == "home"
+            and self.config["roles"].get("departure")
+            and self.coordinator.tree.occupied(self.coordinator.state)
             and self.all_away()
         ):
-            await self.safe_transition({"presence": "away"}, "presence")
+            await self.safe_transition(
+                {"state": self.config["roles"]["departure"]},
+                "presence",
+                lambda: self.coordinator.tree.occupied(self.coordinator.state) and self.all_away(),
+            )
 
     async def night(self, now=None):
-        if self.coordinator.state.presence == "home" and self.coordinator.state.mode == "day":
-            await self.safe_transition({"mode": "night"}, "schedule")
+        target = self.config["roles"].get("night")
+        if (
+            target
+            and self.coordinator.tree.occupied(self.coordinator.state)
+            and target not in self.coordinator.tree.path(self.coordinator.state)
+        ):
+            await self.safe_transition(
+                {"state": target},
+                "schedule",
+                lambda: (
+                    self.coordinator.tree.occupied(self.coordinator.state)
+                    and target not in self.coordinator.tree.path(self.coordinator.state)
+                ),
+            )

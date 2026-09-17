@@ -35,8 +35,9 @@ def schema(values, user=False):
             )
         )
     )
-    for key in ("scene_map", "night_schedule", "legacy_mirror"):
+    for key in ("state_tree", "overlays", "roles", "night_schedule", "legacy_mirror"):
         fields[vol.Optional(key, default=values[key])] = selector.ObjectSelector()
+    fields[vol.Optional("initial_state", default=values["initial_state"])] = str
     return vol.Schema(fields)
 
 

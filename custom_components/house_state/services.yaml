@@ -1,0 +1,121 @@
+set:
+  target:
+    entity:
+      integration: house_state
+      domain: sensor
+  fields:
+    state:
+      selector:
+        text: {}
+    overlay:
+      selector:
+        text: {}
+    reason:
+      selector:
+        select:
+          options:
+          - user
+          - door
+          - gate
+          - presence
+          - schedule
+          - service
+    force:
+      selector:
+        boolean: {}
+arrive:
+  target:
+    entity:
+      integration: house_state
+      domain: sensor
+  fields:
+    reason:
+      selector:
+        select:
+          options:
+          - user
+          - door
+          - gate
+          - presence
+          - schedule
+          - service
+depart:
+  target:
+    entity:
+      integration: house_state
+      domain: sensor
+  fields:
+    vacation:
+      selector:
+        boolean: {}
+    reason:
+      selector:
+        select:
+          options:
+          - user
+          - door
+          - gate
+          - presence
+          - schedule
+          - service
+apply_scene:
+  target:
+    entity:
+      integration: house_state
+      domain: sensor
+  fields:
+    force:
+      selector:
+        boolean: {}
+set_config:
+  target:
+    entity:
+      integration: house_state
+      domain: sensor
+  fields:
+    state_tree:
+      selector:
+        object: {}
+    initial_state:
+      selector:
+        text: {}
+    overlays:
+      selector:
+        object: {}
+    roles:
+      selector:
+        object: {}
+    door_entities:
+      selector:
+        entity:
+          domain: lock
+          multiple: true
+    gate_entities:
+      selector:
+        entity:
+          domain: cover
+          multiple: true
+    person_entities:
+      selector:
+        entity:
+          domain: person
+          multiple: true
+    auto_return:
+      selector:
+        boolean: {}
+    auto_away:
+      selector:
+        boolean: {}
+    auto_away_grace:
+      selector:
+        number:
+          min: 0
+          max: 86400
+          unit_of_measurement: s
+          mode: box
+    night_schedule:
+      selector:
+        object: {}
+    legacy_mirror:
+      selector:
+        object: {}

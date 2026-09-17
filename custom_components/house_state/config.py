@@ -1,20 +1,88 @@
-"""Shared configuration validation and scene diagnostics."""
+"""Atomic configuration validation and scene diagnostics."""
 
+import re
 from copy import deepcopy
 
 import voluptuous as vol
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
-from .const import DEFAULTS, SCENE_KEYS
+from .const import DEFAULTS, ROLE_KEYS
+from .model import StateTree
+
+_ID = vol.All(str, vol.Length(min=1, max=64), vol.Match(r"^[a-z][a-z0-9_]*$"))
 
 
-def validate_config(hass, values):
-    """Reject malformed options before persisting any change."""
-    config = deepcopy(DEFAULTS) | values
+def _nonempty_name(value):
+    if not value.strip():
+        raise vol.Invalid("Empty name")
+    return value
+
+
+_NAME = vol.All(str, vol.Length(min=1, max=100), _nonempty_name)
+_NODE = vol.Schema(
+    {
+        vol.Required("id"): _ID,
+        vol.Required("name"): _NAME,
+        vol.Optional("parent", default=None): vol.Any(None, _ID),
+        vol.Optional("scene", default=""): str,
+        vol.Optional("default_child", default=None): vol.Any(None, _ID),
+        vol.Optional("occupied", default=None): vol.Any(None, bool),
+    }
+)
+_OVERLAY = vol.Schema(
+    {vol.Required("id"): _ID, vol.Required("name"): _NAME, vol.Optional("scene", default=""): str}
+)
+
+
+def validate_config(hass, values, *, check_scenes=True):
+    """Reject malformed graph and options before persisting any change."""
+    config = deepcopy(DEFAULTS) | deepcopy(values)
     try:
         if set(config) - set(DEFAULTS):
             raise vol.Invalid("Unknown configuration field")
+        config["state_tree"] = vol.All([_NODE], vol.Length(min=1))(config["state_tree"])
+        nodes = {node["id"]: node for node in config["state_tree"]}
+        if len(nodes) != len(config["state_tree"]):
+            raise vol.Invalid("Duplicate state IDs")
+        for id, node in nodes.items():
+            if node["parent"] is not None and node["parent"] not in nodes:
+                raise vol.Invalid(f"Missing parent for {id}")
+            seen, cursor = set(), id
+            while cursor:
+                if cursor in seen:
+                    raise vol.Invalid("State tree contains a cycle")
+                seen.add(cursor)
+                cursor = nodes[cursor]["parent"]
+                if cursor and cursor not in nodes:
+                    raise vol.Invalid("Missing parent")
+            child = node["default_child"]
+            if child and (child not in nodes or nodes[child]["parent"] != id):
+                raise vol.Invalid("Default child must be a direct child")
+        if config["initial_state"] not in nodes:
+            raise vol.Invalid("Initial state does not exist")
+        config["overlays"] = vol.Schema([_OVERLAY])(config["overlays"])
+        overlay_ids = [item["id"] for item in config["overlays"]]
+        if len(set(overlay_ids)) != len(overlay_ids) or "none" in overlay_ids:
+            raise vol.Invalid("Duplicate or reserved overlay ID")
+        config["roles"] = vol.Schema(
+            {vol.Optional(role, default=None): vol.Any(None, _ID) for role in ROLE_KEYS}
+        )(config["roles"])
+        tree = StateTree(config)
+        for role, target in config["roles"].items():
+            if target:
+                if target not in nodes:
+                    raise vol.Invalid(f"Missing {role} role target")
+                if tree.occupied(tree.descend(target)) != (role in {"arrival", "night"}):
+                    raise vol.Invalid(f"Incorrect occupancy for {role} role")
+        for node in config["state_tree"] + config["overlays"]:
+            scene = node["scene"]
+            if scene:
+                cv.entity_id(scene)
+                if not scene.startswith("scene.") or (
+                    check_scenes and hass.states.get(scene) is None
+                ):
+                    raise vol.Invalid(f"Scene does not exist: {scene}")
         for key, domain in (
             ("door_entities", "lock"),
             ("gate_entities", "cover"),
@@ -28,26 +96,29 @@ def validate_config(hass, values):
         config["auto_away_grace"] = vol.All(vol.Coerce(int), vol.Range(min=0))(
             config["auto_away_grace"]
         )
-        scene_map = vol.Schema({vol.Optional(key): str for key in SCENE_KEYS})(config["scene_map"])
-        for scene in scene_map.values():
-            if scene and (not scene.startswith("scene.") or hass.states.get(scene) is None):
-                raise vol.Invalid(f"Scene does not exist: {scene}")
         schedule = config["night_schedule"]
         kind = schedule.get("type", "off")
+        allowed = {"off": {"type"}, "fixed": {"type", "time"}, "sun": {"type", "event", "offset"}}
+        if kind not in allowed or set(schedule) - allowed[kind]:
+            raise vol.Invalid("Invalid night schedule fields")
         if kind == "off":
             config["night_schedule"] = {"type": "off"}
         elif kind == "fixed":
+            if not isinstance(schedule["time"], str) or not re.fullmatch(
+                r"\d{2}:\d{2}:\d{2}", schedule["time"]
+            ):
+                raise vol.Invalid("Fixed time must be HH:MM:SS")
             config["night_schedule"] = {"type": kind, "time": cv.time(schedule["time"]).isoformat()}
-        elif kind == "sun":
+        else:
             config["night_schedule"] = {
                 "type": kind,
                 "event": vol.In(["sunset", "sunrise"])(schedule["event"]),
-                "offset": int(schedule.get("offset", 0)),
+                "offset": vol.All(vol.Coerce(int), vol.Range(min=-86400, max=86400))(
+                    schedule.get("offset", 0)
+                ),
             }
-        else:
-            raise vol.Invalid("Invalid night schedule type")
         config["legacy_mirror"] = vol.Schema(
-            {vol.Optional(key): cv.entity_id for key in ("presence", "mode", "overlay")}
+            {vol.Optional(key): cv.entity_id for key in ("state", "overlay")}
         )(config["legacy_mirror"])
         if any(
             not entity.startswith("input_select.") for entity in config["legacy_mirror"].values()
@@ -59,10 +130,12 @@ def validate_config(hass, values):
 
 
 def scene_warnings(hass, config):
-    """Report missing scene members without prohibiting otherwise valid scenes."""
     warnings = []
-    for scene in config["scene_map"].values():
+    for node in config["state_tree"] + config["overlays"]:
+        scene = node["scene"]
         state = hass.states.get(scene) if scene else None
+        if scene and state is None:
+            warnings.append(f"{scene}: missing scene")
         if state:
             members = state.attributes.get("entity_id", [])
             if isinstance(members, str):

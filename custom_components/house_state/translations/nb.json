@@ -1,0 +1,191 @@
+{
+  "title": "House State",
+  "config": {
+    "step": {
+      "user": {
+        "title": "House State",
+        "description": "Bygg et eget tre med navn, foreldre, scener og standardbarn. Bruk kortets visuelle trebygger eller JSON-feltene her. Roller peker til tilstands-ID-er. Endringer aktiverer ikke scener automatisk.",
+        "data": {
+          "name": "Navn på huset",
+          "state_tree": "Tilstandstre",
+          "initial_state": "ID for starttilstand",
+          "overlays": "Overlegg",
+          "roles": "Automatiseringsroller",
+          "door_entities": "Låser for hjemkomst",
+          "gate_entities": "Porter for hjemkomst",
+          "person_entities": "Personer",
+          "auto_return": "Automatisk hjemkomst",
+          "auto_away": "Automatisk avreise",
+          "auto_away_grace": "Ventetid før avreise",
+          "night_schedule": "Nattplan",
+          "legacy_mirror": "Gamle hjelpeentiteter"
+        }
+      },
+      "warnings": {
+        "title": "Manglende sceneentiteter",
+        "description": "Disse entitetene finnes ikke i Home Assistant. Rett scenene ved behov. Fortsett for å lagre:\n\n{warnings}"
+      }
+    },
+    "error": {
+      "invalid_config": "Ugyldig tre, rolle, scene eller innstilling. Kontroller ID-er, foreldre og scenene."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "House State",
+        "description": "Bygg et eget tre med navn, foreldre, scener og standardbarn. Bruk kortets visuelle trebygger eller JSON-feltene her. Roller peker til tilstands-ID-er. Endringer aktiverer ikke scener automatisk.",
+        "data": {
+          "state_tree": "Tilstandstre",
+          "initial_state": "ID for starttilstand",
+          "overlays": "Overlegg",
+          "roles": "Automatiseringsroller",
+          "door_entities": "Låser for hjemkomst",
+          "gate_entities": "Porter for hjemkomst",
+          "person_entities": "Personer",
+          "auto_return": "Automatisk hjemkomst",
+          "auto_away": "Automatisk avreise",
+          "auto_away_grace": "Ventetid før avreise",
+          "night_schedule": "Nattplan",
+          "legacy_mirror": "Gamle hjelpeentiteter"
+        }
+      },
+      "warnings": {
+        "title": "Manglende sceneentiteter",
+        "description": "Disse entitetene finnes ikke i Home Assistant. Rett scenene ved behov. Fortsett for å lagre:\n\n{warnings}"
+      }
+    },
+    "error": {
+      "invalid_config": "Ugyldig tre, rolle, scene eller innstilling. Kontroller ID-er, foreldre og scenene."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "state": {
+        "name": "Tilstand"
+      }
+    },
+    "select": {
+      "overlay": {
+        "name": "Overlegg"
+      }
+    },
+    "binary_sensor": {
+      "occupied": {
+        "name": "Noen hjemme"
+      }
+    }
+  },
+  "services": {
+    "set": {
+      "name": "Velg hustilstand",
+      "description": "Velg en tilstand og/eller et overlegg samlet.",
+      "fields": {
+        "state": {
+          "name": "Tilstands-ID",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "overlay": {
+          "name": "Overleggs-ID",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "reason": {
+          "name": "Årsak",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "force": {
+          "name": "Tving aktivering",
+          "description": "Se README for feltformat og gyldige verdier."
+        }
+      }
+    },
+    "arrive": {
+      "name": "Kom hjem",
+      "description": "Velg hjemkomstrollen hvis ingen er hjemme.",
+      "fields": {
+        "reason": {
+          "name": "Årsak",
+          "description": "Se README for feltformat og gyldige verdier."
+        }
+      }
+    },
+    "depart": {
+      "name": "Dra hjemmefra",
+      "description": "Velg avreise- eller ferierollen.",
+      "fields": {
+        "vacation": {
+          "name": "Ferie",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "reason": {
+          "name": "Årsak",
+          "description": "Se README for feltformat og gyldige verdier."
+        }
+      }
+    },
+    "apply_scene": {
+      "name": "Aktiver scene nå",
+      "description": "Aktiver gjeldende scene og deretter overlegg.",
+      "fields": {
+        "force": {
+          "name": "Tving aktivering",
+          "description": "Se README for feltformat og gyldige verdier."
+        }
+      }
+    },
+    "set_config": {
+      "name": "Konfigurer huset",
+      "description": "Lagre innstillinger samlet. Lister og objekter erstattes helt. Aktiver scenene manuelt etter redigering.",
+      "fields": {
+        "state_tree": {
+          "name": "Tilstandstre",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "initial_state": {
+          "name": "ID for starttilstand",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "overlays": {
+          "name": "Overlegg",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "roles": {
+          "name": "Automatiseringsroller",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "door_entities": {
+          "name": "Låser for hjemkomst",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "gate_entities": {
+          "name": "Porter for hjemkomst",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "person_entities": {
+          "name": "Personer",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "auto_return": {
+          "name": "Automatisk hjemkomst",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "auto_away": {
+          "name": "Automatisk avreise",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "auto_away_grace": {
+          "name": "Ventetid før avreise",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "night_schedule": {
+          "name": "Nattplan",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "legacy_mirror": {
+          "name": "Gamle hjelpeentiteter",
+          "description": "Se README for feltformat og gyldige verdier."
+        }
+      }
+    }
+  }
+}

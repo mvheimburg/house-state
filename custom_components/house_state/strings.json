@@ -1,0 +1,191 @@
+{
+  "title": "House State",
+  "config": {
+    "step": {
+      "user": {
+        "title": "House State",
+        "description": "Build a tree with names, parents, scenes and default children. Use the card’s visual tree editor or the JSON fields here. Roles refer to state IDs. Configuration changes do not apply scenes automatically.",
+        "data": {
+          "name": "House name",
+          "state_tree": "State tree",
+          "initial_state": "Initial state ID",
+          "overlays": "Overlays",
+          "roles": "Automation roles",
+          "door_entities": "Arrival locks",
+          "gate_entities": "Arrival covers",
+          "person_entities": "People",
+          "auto_return": "Automatic arrival",
+          "auto_away": "Automatic departure",
+          "auto_away_grace": "Departure grace period",
+          "night_schedule": "Night schedule",
+          "legacy_mirror": "Legacy helpers"
+        }
+      },
+      "warnings": {
+        "title": "Missing scene members",
+        "description": "These entities are missing from Home Assistant. Fix the scenes as needed. Continue to save:\n\n{warnings}"
+      }
+    },
+    "error": {
+      "invalid_config": "Invalid tree, role, scene or setting. Check IDs, parents, occupancy roles and scene entities."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "House State",
+        "description": "Build a tree with names, parents, scenes and default children. Use the card’s visual tree editor or the JSON fields here. Roles refer to state IDs. Configuration changes do not apply scenes automatically.",
+        "data": {
+          "state_tree": "State tree",
+          "initial_state": "Initial state ID",
+          "overlays": "Overlays",
+          "roles": "Automation roles",
+          "door_entities": "Arrival locks",
+          "gate_entities": "Arrival covers",
+          "person_entities": "People",
+          "auto_return": "Automatic arrival",
+          "auto_away": "Automatic departure",
+          "auto_away_grace": "Departure grace period",
+          "night_schedule": "Night schedule",
+          "legacy_mirror": "Legacy helpers"
+        }
+      },
+      "warnings": {
+        "title": "Missing scene members",
+        "description": "These entities are missing from Home Assistant. Fix the scenes as needed. Continue to save:\n\n{warnings}"
+      }
+    },
+    "error": {
+      "invalid_config": "Invalid tree, role, scene or setting. Check IDs, parents, occupancy roles and scene entities."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "state": {
+        "name": "State"
+      }
+    },
+    "select": {
+      "overlay": {
+        "name": "Overlay"
+      }
+    },
+    "binary_sensor": {
+      "occupied": {
+        "name": "Occupied"
+      }
+    }
+  },
+  "services": {
+    "set": {
+      "name": "Set house state",
+      "description": "Select a node (following default children) and/or an overlay atomically.",
+      "fields": {
+        "state": {
+          "name": "State ID",
+          "description": "Configured node ID."
+        },
+        "overlay": {
+          "name": "Overlay ID",
+          "description": "Configured overlay ID, or none."
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Source of this transition."
+        },
+        "force": {
+          "name": "Force scenes",
+          "description": "Apply even if the scene pair is unchanged."
+        }
+      }
+    },
+    "arrive": {
+      "name": "Arrive",
+      "description": "Select the arrival role unless already occupied.",
+      "fields": {
+        "reason": {
+          "name": "Reason",
+          "description": "Source of this transition."
+        }
+      }
+    },
+    "depart": {
+      "name": "Depart",
+      "description": "Select the departure or vacation role.",
+      "fields": {
+        "vacation": {
+          "name": "Vacation",
+          "description": "Use the vacation role."
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Source of this transition."
+        }
+      }
+    },
+    "apply_scene": {
+      "name": "Apply scene now",
+      "description": "Resolve the current scene and apply the overlay after it.",
+      "fields": {
+        "force": {
+          "name": "Force scenes",
+          "description": "Defaults to true for manual resynchronization."
+        }
+      }
+    },
+    "set_config": {
+      "name": "Configure house",
+      "description": "Update options atomically. Trees, lists and objects replace the complete field. Apply scenes explicitly after editing.",
+      "fields": {
+        "state_tree": {
+          "name": "State tree",
+          "description": "See the README for the configuration schema."
+        },
+        "initial_state": {
+          "name": "Initial state ID",
+          "description": "See the README for the configuration schema."
+        },
+        "overlays": {
+          "name": "Overlays",
+          "description": "See the README for the configuration schema."
+        },
+        "roles": {
+          "name": "Automation roles",
+          "description": "See the README for the configuration schema."
+        },
+        "door_entities": {
+          "name": "Arrival locks",
+          "description": "See the README for the configuration schema."
+        },
+        "gate_entities": {
+          "name": "Arrival covers",
+          "description": "See the README for the configuration schema."
+        },
+        "person_entities": {
+          "name": "People",
+          "description": "See the README for the configuration schema."
+        },
+        "auto_return": {
+          "name": "Automatic arrival",
+          "description": "See the README for the configuration schema."
+        },
+        "auto_away": {
+          "name": "Automatic departure",
+          "description": "See the README for the configuration schema."
+        },
+        "auto_away_grace": {
+          "name": "Departure grace period",
+          "description": "See the README for the configuration schema."
+        },
+        "night_schedule": {
+          "name": "Night schedule",
+          "description": "See the README for the configuration schema."
+        },
+        "legacy_mirror": {
+          "name": "Legacy helpers",
+          "description": "See the README for the configuration schema."
+        }
+      }
+    }
+  }
+}

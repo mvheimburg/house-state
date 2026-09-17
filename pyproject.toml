@@ -1,8 +1,15 @@
 [project]
 name = "house-state"
 version = "0.1.0"
-description = "House modes, scenes and overlays for Home Assistant"
+description = "Configurable house state trees, scenes and overlays for Home Assistant"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "mvheimburg" }]
 requires-python = ">=3.13"
+[project.urls]
+Homepage = "https://github.com/mvheimburg/house-state"
+Issues = "https://github.com/mvheimburg/house-state/issues"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

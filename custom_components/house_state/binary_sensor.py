@@ -17,4 +17,4 @@ class HouseOccupied(HouseEntity, BinarySensorEntity):
 
     @property
     def is_on(self):
-        return self.coordinator.state.presence == "home"
+        return self.coordinator.tree.occupied(self.coordinator.state)

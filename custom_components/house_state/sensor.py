@@ -21,7 +21,7 @@ class HouseSensor(HouseEntity, SensorEntity):
 
     @property
     def native_value(self):
-        return self.coordinator.state.presence
+        return self.coordinator.state
 
     @property
     def extra_state_attributes(self):
@@ -31,18 +31,19 @@ class HouseSensor(HouseEntity, SensorEntity):
         await self.coordinator.transition(changes, reason, force)
 
     async def async_arrive(self, reason="service"):
-        if self.coordinator.state.presence != "home":
-            await self.coordinator.transition({"presence": "home"}, reason)
+        target = self.coordinator.tree.role("arrival")
+        await self.coordinator.transition(
+            {"state": target},
+            reason,
+            guard=lambda: not self.coordinator.tree.occupied(self.coordinator.state),
+        )
 
-    async def async_depart(self, vacation=False):
-        await self.coordinator.transition({"presence": "vacation" if vacation else "away"})
+    async def async_depart(self, vacation=False, reason="service"):
+        target = self.coordinator.tree.role("vacation" if vacation else "departure")
+        await self.coordinator.transition({"state": target}, reason)
 
     async def async_apply_scene(self, force=True):
         await self.coordinator.transition({}, force=force)
 
     async def async_set_config(self, **changes):
-        from .config import validate_config
-
-        coordinator = self.coordinator
-        options = validate_config(self.hass, coordinator.config | changes)
-        self.hass.config_entries.async_update_entry(coordinator.entry, options=options)
+        await self.coordinator.set_config(changes)
