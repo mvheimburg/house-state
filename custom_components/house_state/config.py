@@ -7,8 +7,9 @@ import voluptuous as vol
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
-from .const import DEFAULTS, ROLE_KEYS
+from .const import DEFAULTS, RESERVED_OVERLAYS, ROLE_KEYS
 from .model import StateTree
+from .rules import WEEKDAYS, valid_mmdd
 
 _ID = vol.All(str, vol.Length(min=1, max=64), vol.Match(r"^[a-z][a-z0-9_]*$"))
 
@@ -20,6 +21,8 @@ def _nonempty_name(value):
 
 
 _NAME = vol.All(str, vol.Length(min=1, max=100), _nonempty_name)
+_MMDD = vol.All(str, vol.Match(r"^\d{2}-\d{2}$"))
+_OFFSET = vol.All(vol.Coerce(int), vol.Range(min=-180, max=180))
 _NODE = vol.Schema(
     {
         vol.Required("id"): _ID,
@@ -31,8 +34,82 @@ _NODE = vol.Schema(
     }
 )
 _OVERLAY = vol.Schema(
-    {vol.Required("id"): _ID, vol.Required("name"): _NAME, vol.Optional("scene", default=""): str}
+    {
+        vol.Required("id"): _ID,
+        vol.Required("name"): _NAME,
+        vol.Optional("scene", default=""): str,
+        vol.Optional("calendar"): cv.entity_id,
+        vol.Optional("match"): str,
+        vol.Optional("dates"): dict,
+        vol.Optional("when_occupied"): vol.Any(None, bool),
+        vol.Optional("when_state"): [_ID],
+        vol.Optional("priority"): vol.All(vol.Coerce(int), vol.Range(min=-100, max=100)),
+    }
 )
+
+
+def _dates(value):
+    """Normalize one date rule the way night_schedule normalizes a schedule."""
+    allowed = {
+        "fixed": {"type", "from", "to"},
+        "easter": {"type", "from", "to"},
+        "nth_weekday": {"type", "weekday", "nth", "month", "anchor", "days"},
+    }
+    kind = value.get("type")
+    if kind not in allowed or set(value) - allowed[kind]:
+        raise vol.Invalid("Invalid date rule fields")
+    if kind == "fixed":
+        rule = {"type": kind, "from": _MMDD(value["from"]), "to": _MMDD(value["to"])}
+        for bound in ("from", "to"):
+            if not valid_mmdd(rule[bound]):
+                raise vol.Invalid(f"Date rule has no such day: {rule[bound]}")
+        return rule
+    if kind == "easter":
+        rule = {
+            "type": kind,
+            "from": _OFFSET(value.get("from", 0)),
+            "to": _OFFSET(value.get("to", 0)),
+        }
+        if rule["from"] > rule["to"]:
+            raise vol.Invalid("Easter window starts after it ends")
+        return rule
+    rule = {
+        "type": kind,
+        "weekday": vol.In(list(WEEKDAYS))(value["weekday"]),
+        "nth": vol.All(vol.Coerce(int), vol.Range(min=-5, max=5))(value["nth"]),
+        "days": vol.All(vol.Coerce(int), vol.Range(min=1, max=366))(value.get("days", 1)),
+    }
+    if rule["nth"] == 0:
+        raise vol.Invalid("Date rule nth must not be zero")
+    if ("month" in value) == ("anchor" in value):
+        raise vol.Invalid("Date rule takes either a month or an anchor")
+    if "month" in value:
+        rule["month"] = vol.All(vol.Coerce(int), vol.Range(min=1, max=12))(value["month"])
+    else:
+        rule["anchor"] = _MMDD(value["anchor"])
+        if not valid_mmdd(rule["anchor"]):
+            raise vol.Invalid(f"Date rule has no such anchor: {rule['anchor']}")
+    return rule
+
+
+def _overlay_rule(overlay, nodes):
+    """Validate the optional activation rule attached to one overlay."""
+    if "calendar" in overlay and "dates" in overlay:
+        raise vol.Invalid("An overlay takes a calendar or dates, not both")
+    if "calendar" in overlay and not overlay["calendar"].startswith("calendar."):
+        raise vol.Invalid("Overlay calendar requires a calendar entity")
+    if "match" in overlay:
+        if "calendar" not in overlay:
+            raise vol.Invalid("Overlay match requires a calendar")
+        try:
+            re.compile(overlay["match"])
+        except re.error as err:
+            raise vol.Invalid(f"Invalid overlay match expression: {err}") from err
+    for state in overlay.get("when_state", []):
+        if state not in nodes:
+            raise vol.Invalid(f"Unknown when_state target: {state}")
+    if "dates" in overlay:
+        overlay["dates"] = _dates(overlay["dates"])
 
 
 def validate_config(hass, values, *, check_scenes=True):
@@ -63,8 +140,10 @@ def validate_config(hass, values, *, check_scenes=True):
             raise vol.Invalid("Initial state does not exist")
         config["overlays"] = vol.Schema([_OVERLAY])(config["overlays"])
         overlay_ids = [item["id"] for item in config["overlays"]]
-        if len(set(overlay_ids)) != len(overlay_ids) or "none" in overlay_ids:
+        if len(set(overlay_ids)) != len(overlay_ids) or RESERVED_OVERLAYS & set(overlay_ids):
             raise vol.Invalid("Duplicate or reserved overlay ID")
+        for overlay in config["overlays"]:
+            _overlay_rule(overlay, nodes)
         config["roles"] = vol.Schema(
             {vol.Optional(role, default=None): vol.Any(None, _ID) for role in ROLE_KEYS}
         )(config["roles"])

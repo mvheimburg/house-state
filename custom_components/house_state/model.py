@@ -2,6 +2,9 @@
 
 from homeassistant.exceptions import ServiceValidationError
 
+from .const import RESERVED_OVERLAYS
+from .rules import has_rules
+
 
 class Rejected(ServiceValidationError):
     def __init__(self, field, value, because):
@@ -17,6 +20,7 @@ class StateTree:
         self.overlays = {overlay["id"]: overlay for overlay in config["overlays"]}
         self.initial = config["initial_state"]
         self.roles = config["roles"]
+        self.has_rules = has_rules(config["overlays"])
 
     def descend(self, node_id):
         if node_id not in self.nodes:
@@ -47,14 +51,21 @@ class StateTree:
         overlay_scene = self.overlays[overlay]["scene"] or None if overlay != "none" else None
         return base, source, overlay_scene
 
-    def select(self, state, overlay, changes):
+    def select(self, state, choice, changes):
+        """Resolve a requested state and overlay choice; the choice may be a sentinel."""
         if "state" in changes:
             state = self.descend(changes["state"])
         if "overlay" in changes:
-            overlay = changes["overlay"]
-            if overlay != "none" and overlay not in self.overlays:
-                raise Rejected("overlay", overlay, "overlay does not exist")
-        return state, overlay
+            choice = changes["overlay"]
+            if choice not in RESERVED_OVERLAYS and choice not in self.overlays:
+                raise Rejected("overlay", choice, "overlay does not exist")
+            if choice == "auto" and not self.has_rules:
+                raise Rejected("overlay", choice, "no overlay defines a rule")
+        return state, choice
+
+    def effective(self, choice, evaluated):
+        """The overlay in force: a manual choice, otherwise what the rules picked."""
+        return evaluated if choice == "auto" else choice
 
     def role(self, role):
         if not (target := self.roles.get(role)):

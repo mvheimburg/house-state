@@ -2,7 +2,9 @@
 
 import asyncio
 import logging
+import re
 from copy import deepcopy
+from datetime import timedelta
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import callback
@@ -10,8 +12,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
+from . import rules
 from .config import scene_warnings, validate_config
-from .const import DOMAIN
+from .const import DOMAIN, RESERVED_OVERLAYS
 from .model import Rejected, StateTree
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,6 +27,10 @@ class HouseCoordinator:
         self.tree = StateTree(self.config)
         self.state = self.tree.descend(self.tree.initial)
         self.overlay = "none"
+        self.overlay_choice = "auto" if self.tree.has_rules else "none"
+        self.hold_until = None
+        self.evaluated = "none"
+        self.calendar_active = set()
         self.since = dt_util.utcnow().isoformat()
         self.previous_state = self.state
         self.reason = "service"
@@ -43,11 +50,29 @@ class HouseCoordinator:
             await self.save()
             return
         old_state, old_overlay = data["state"], data["overlay"]
+        # Installs predating the overlay rules stored an effective overlay only; it
+        # was always a manual choice, so it restores as one.
+        old_choice = data.get("overlay_choice", old_overlay)
         self.state = (
             old_state if old_state in self.tree.nodes else self.tree.descend(self.tree.initial)
         )
-        self.overlay = old_overlay if old_overlay in self.tree.overlays else "none"
-        normalized = (old_state, old_overlay) != (self.state, self.overlay)
+        self.overlay_choice = (
+            old_choice
+            if old_choice in RESERVED_OVERLAYS or old_choice in self.tree.overlays
+            else "none"
+        )
+        if self.overlay_choice == "auto" and not self.tree.has_rules:
+            self.overlay_choice = "none"
+        self.hold_until = data.get("hold_until")
+        self.evaluated = data.get("evaluated", "none")
+        if self.evaluated not in self.tree.overlays:
+            self.evaluated = "none"
+        normalized = (old_state, old_choice) != (self.state, self.overlay_choice)
+        # Under rules every deliberate choice arms a hold, so a bare none is the
+        # resting default rather than a suppression: let the rules have the axis.
+        if self.tree.has_rules and self.overlay_choice == "none" and not self.hold_until:
+            self.overlay_choice = "auto"
+        self.overlay = self.tree.effective(self.overlay_choice, self.evaluated)
         self.since = dt_util.utcnow().isoformat() if normalized else data["since"]
         self.previous_state = old_state if normalized else data.get("previous_state", self.state)
         self.reason = "service" if normalized else data.get("reason", "service")
@@ -75,6 +100,9 @@ class HouseCoordinator:
             {
                 "state": self.state,
                 "overlay": self.overlay,
+                "overlay_choice": self.overlay_choice,
+                "hold_until": self.hold_until,
+                "evaluated": self.evaluated,
                 "since": self.since,
                 "previous_state": self.previous_state,
                 "reason": self.reason,
@@ -97,15 +125,30 @@ class HouseCoordinator:
             f"{DOMAIN}_event", {"entity_id": self.entity_id, "type": kind, **data}
         )
 
-    async def transition(self, changes, reason="service", force=False, guard=None):
+    async def transition(self, changes, reason="service", force=False, guard=None, quiet=False):
+        """Select state and overlay. Quiet transitions defer scene application.
+
+        A rule-driven change is quiet: it publishes the overlay a consumer reads
+        but leaves last_pair stale, so the next ordinary transition applies the
+        scenes rather than firing them unattended at a rule boundary.
+        """
         async with self.lock:
             try:
                 if guard is not None and not guard():
                     return
-                state, overlay = self.tree.select(self.state, self.overlay, changes)
+                state, choice = self.tree.select(self.state, self.overlay_choice, changes)
             except Rejected as err:
                 self.event("rejected", **err.details)
                 raise
+            hold = self.hold_until
+            if "overlay" in changes:
+                # A hand-picked overlay holds; the rules reclaiming the axis clears it.
+                manual = not quiet and choice != "auto" and self.tree.has_rules
+                hold = self.hold_expiry() if manual else None
+            # Rules can gate on the active node, so they resolve against the node
+            # being selected here; gating never costs a second scene application.
+            evaluated = self.rule_result(state)
+            overlay = self.tree.effective(choice, evaluated)
             previous = {
                 "state": self.state,
                 "active_path": self.tree.path(self.state),
@@ -116,6 +159,9 @@ class HouseCoordinator:
             rollback = (
                 self.state,
                 self.overlay,
+                self.overlay_choice,
+                self.hold_until,
+                self.evaluated,
                 self.since,
                 self.previous_state,
                 self.reason,
@@ -126,9 +172,10 @@ class HouseCoordinator:
                 self.since, self.reason = dt_util.utcnow().isoformat(), reason
                 if state != previous["state"]:
                     self.previous_state = previous["state"]
+            self.overlay_choice, self.hold_until, self.evaluated = choice, hold, evaluated
             base, source, overlay_scene = self.tree.resolve(self.state, self.overlay)
             needed = force or self.pending or [base, overlay_scene] != self.last_pair
-            if needed:
+            if needed and not quiet:
                 self.pending = True
             try:
                 await self.save()
@@ -136,6 +183,9 @@ class HouseCoordinator:
                 (
                     self.state,
                     self.overlay,
+                    self.overlay_choice,
+                    self.hold_until,
+                    self.evaluated,
                     self.since,
                     self.previous_state,
                     self.reason,
@@ -160,10 +210,70 @@ class HouseCoordinator:
                     self.event("overlay_changed", overlay=overlay, previous=previous["overlay"])
                 if self.triggers:
                     self.triggers.reconcile_away()
-            if needed:
+            if needed and not quiet:
                 await self.apply(base, source, overlay_scene)
             if changed:
                 await self.mirror()
+
+    def rule_result(self, state):
+        """The overlay the configured rules pick for a node, today, right now."""
+        if not self.tree.has_rules:
+            return "none"
+        return rules.evaluate(
+            self.config["overlays"],
+            dt_util.now().date(),
+            self.calendar_active,
+            self.tree.path(state),
+            self.tree.occupied(state),
+        )
+
+    def hold_expiry(self):
+        """A manual choice holds until the start of the next local day."""
+        tomorrow = dt_util.start_of_local_day() + timedelta(days=1)
+        return dt_util.as_utc(dt_util.start_of_local_day(tomorrow)).isoformat()
+
+    async def query_calendars(self):
+        """Overlay IDs whose calendar rule has a matching event running now."""
+        entities = sorted(
+            {overlay["calendar"] for overlay in self.config["overlays"] if "calendar" in overlay}
+        )
+        if not entities:
+            return set()
+        try:
+            response = await self.hass.services.async_call(
+                "calendar",
+                "get_events",
+                {"entity_id": entities, "duration": {"seconds": 1}},
+                blocking=True,
+                return_response=True,
+            )
+        except Exception:
+            # Keep the previous answer rather than flapping an overlay off because
+            # a calendar integration is reloading or briefly unavailable.
+            _LOGGER.warning("Could not read overlay calendars; keeping last result", exc_info=True)
+            return self.calendar_active
+        active = set()
+        for overlay in self.config["overlays"]:
+            if "calendar" not in overlay:
+                continue
+            events = (response or {}).get(overlay["calendar"], {}).get("events", [])
+            pattern = overlay.get("match")
+            if any(
+                pattern is None or re.search(pattern, event.get("summary") or "", re.IGNORECASE)
+                for event in events
+            ):
+                active.add(overlay["id"])
+        return active
+
+    async def evaluate(self, refresh_calendars=False):
+        """Re-apply the rules to the overlay axis without firing scenes."""
+        if not self.tree.has_rules:
+            return
+        if refresh_calendars:
+            self.calendar_active = await self.query_calendars()
+        deadline = dt_util.parse_datetime(self.hold_until) if self.hold_until else None
+        expired = self.hold_until is not None and (deadline is None or deadline <= dt_util.utcnow())
+        await self.transition({"overlay": "auto"} if expired else {}, reason="schedule", quiet=True)
 
     async def apply(self, base, source, overlay):
         for scene in (base, overlay):
@@ -231,13 +341,23 @@ class HouseCoordinator:
                 previous=self.reconciled_previous,
                 reason="service",
             )
+        if self.hass.is_running:
+            await self.started()
+        else:
+            # Calendar entities may not exist yet during setup.
+            self.start_unsub = self.hass.bus.async_listen_once(
+                EVENT_HOMEASSISTANT_STARTED, self.started
+            )
+
+    async def started(self, event=None):
+        self.start_unsub = None
+        try:
+            await self.evaluate(refresh_calendars=True)
+        except Exception:
+            # A failed evaluation leaves the stored overlay in place; never block setup.
+            _LOGGER.warning("Could not evaluate overlay rules at startup", exc_info=True)
         if self.pending and not self.skip_start_retry:
-            if self.hass.is_running:
-                await self.retry()
-            else:
-                self.start_unsub = self.hass.bus.async_listen_once(
-                    EVENT_HOMEASSISTANT_STARTED, self.retry
-                )
+            await self.retry()
 
     async def retry(self, event=None):
         try:
@@ -255,6 +375,14 @@ class HouseCoordinator:
             self.start_unsub = None
 
     @property
+    def scene_stale(self):
+        """A quiet transition left the resolved scenes unapplied on purpose."""
+        if self.pending or self.last_pair is None:
+            return False
+        base, _, overlay_scene = self.tree.resolve(self.state, self.overlay)
+        return [base, overlay_scene] != self.last_pair
+
+    @property
     def attributes(self):
         return {
             "state": self.state,
@@ -262,6 +390,10 @@ class HouseCoordinator:
             "state_tree": self.config["state_tree"],
             "overlays": self.config["overlays"],
             "overlay": self.overlay,
+            "overlay_choice": self.overlay_choice,
+            "overlay_rule": self.evaluated,
+            "overlay_hold_until": self.hold_until,
+            "scene_stale": self.scene_stale,
             "occupied": self.tree.occupied(self.state),
             "last_scene": self.last_pair[0] if self.last_pair else None,
             "last_changed_by": self.reason,

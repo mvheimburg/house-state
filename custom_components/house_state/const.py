@@ -4,6 +4,8 @@ DOMAIN = "house_state"
 PLATFORMS = ["sensor", "select", "binary_sensor"]
 ROLE_KEYS = ["arrival", "departure", "vacation", "night"]
 REASONS = ["user", "door", "gate", "presence", "schedule", "service"]
+# Overlay axis sentinels: auto follows the configured rules, none suppresses them.
+RESERVED_OVERLAYS = {"none", "auto"}
 
 
 def _node(id, name, parent=None, default_child=None, occupied=None):

@@ -55,11 +55,12 @@ class HouseSelect(HouseEntity, SelectEntity):
 class OverlaySelect(HouseEntity, SelectEntity):
     def __init__(self, coordinator):
         super().__init__(coordinator, "overlay")
-        self._attr_options = ["none", *coordinator.tree.overlays]
+        auto = ["auto"] if coordinator.tree.has_rules else []
+        self._attr_options = [*auto, "none", *coordinator.tree.overlays]
 
     @property
     def current_option(self):
-        return self.coordinator.overlay
+        return self.coordinator.overlay_choice
 
     async def async_select_option(self, option):
         await self.coordinator.transition({"overlay": option}, reason="user")

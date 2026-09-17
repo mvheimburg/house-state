@@ -47,6 +47,22 @@ class Triggers:
             self.unsubs.append(
                 track(self.hass, self.night, timedelta(seconds=schedule.get("offset", 0)))
             )
+        if self.coordinator.tree.has_rules:
+            # Local midnight, so a season never turns over at 01:00 Norwegian time.
+            self.unsubs.append(
+                async_track_time_change(self.hass, self.daily, hour=0, minute=0, second=0)
+            )
+            calendars = sorted(
+                {
+                    overlay["calendar"]
+                    for overlay in self.config["overlays"]
+                    if "calendar" in overlay
+                }
+            )
+            if calendars:
+                self.unsubs.append(
+                    async_track_state_change_event(self.hass, calendars, self.on_calendar)
+                )
         self.reconcile_away()
 
     def stop(self):
@@ -84,6 +100,20 @@ class Triggers:
             self.away_cancel = async_call_later(
                 self.hass, self.config["auto_away_grace"], self.depart
             )
+
+    async def daily(self, now=None):
+        await self.evaluate()
+
+    async def on_calendar(self, event):
+        await self.evaluate()
+
+    async def evaluate(self):
+        if self.stopped:
+            return
+        try:
+            await self.coordinator.evaluate(refresh_calendars=True)
+        except Exception:
+            _LOGGER.warning("House State overlay rules failed to evaluate", exc_info=True)
 
     async def safe_transition(self, changes, reason, guard):
         if self.stopped:

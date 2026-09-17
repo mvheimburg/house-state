@@ -87,7 +87,7 @@
         },
         "overlay": {
           "name": "Overlay ID",
-          "description": "Configured overlay ID, or none."
+          "description": "Configured overlay ID, none to suppress until tomorrow, or auto to follow the configured rules."
         },
         "reason": {
           "name": "Reason",

@@ -87,7 +87,7 @@
         },
         "overlay": {
           "name": "Overleggs-ID",
-          "description": "Se README for feltformat og gyldige verdier."
+          "description": "Overleggs-ID, none for å slå av ut dagen, eller auto for å følge reglene."
         },
         "reason": {
           "name": "Årsak",
