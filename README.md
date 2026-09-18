@@ -1,3 +1,5 @@
+<img src="custom_components/house_state/brand/icon.png" alt="" width="96" align="right">
+
 # House State
 
 Build your house's state tree in Home Assistant. Every state, parent, scene,
