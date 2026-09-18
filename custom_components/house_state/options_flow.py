@@ -99,6 +99,7 @@ class HouseOptionsFlow(config_entries.OptionsFlow):
                 "overlays",
                 "presence",
                 "visits",
+                "water",
                 "night",
                 "legacy",
                 "save",
@@ -325,6 +326,20 @@ class HouseOptionsFlow(config_entries.OptionsFlow):
             "lock", multiple=True
         )
         return self.form("visits", fields)
+
+    async def async_step_water(self, user_input=None):
+        if user_input is not None:
+            if not user_input.get("back"):
+                self._draft["water_valves"] = user_input["water_valves"]
+            return await self.async_step_init()
+        return self.form(
+            "water",
+            {
+                field("water_valves", self._draft["water_valves"]): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain=["valve", "switch"], multiple=True)
+                )
+            },
+        )
 
     async def async_step_legacy(self, user_input=None):
         if user_input is not None:

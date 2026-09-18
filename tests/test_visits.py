@@ -232,7 +232,7 @@ async def test_lock_failures_are_reported_not_assumed(hass, house, scenes, outco
     await call(hass, state="out")
     await visit(hass)
     hass.states.async_set("lock.door", "unlocked")
-    with patch("custom_components.house_state.visits.LOCK_VERIFY_TIMEOUT", 0.01):
+    with patch("custom_components.house_state.devices.VERIFY_TIMEOUT", 0.01):
         result = await visit(hass, "visit_end")
     assert result["cleanup"]["status"] == "failed"
     assert result["cleanup"]["locks"] == {"lock.door": reported}

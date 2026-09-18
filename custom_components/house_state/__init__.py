@@ -45,6 +45,7 @@ async def async_setup(hass, config):
             vol.Optional("visit_exit_grace"): vol.Coerce(int),
             vol.Optional("visit_reapply_scene"): cv.boolean,
             vol.Optional("visit_lock_entities"): cv.entity_ids,
+            vol.Optional("water_valves"): cv.entity_ids,
         },
         "visit_start": {
             vol.Optional("visit_id"): _VISIT_ID,

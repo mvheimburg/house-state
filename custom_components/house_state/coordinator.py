@@ -17,6 +17,7 @@ from .config import scene_warnings, validate_config
 from .const import DOMAIN, RESERVED_OVERLAYS
 from .model import Rejected, StateTree
 from .visits import Visits
+from .water import Water
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class HouseCoordinator:
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}")
         self.triggers = None
         self.visits = Visits(self)
+        self.water = Water(self)
         self.start_unsub = None
         self.reconciled_previous = None
         self.skip_start_retry = hass.data.pop((DOMAIN, entry.entry_id, "options_reload"), False)
@@ -81,6 +83,7 @@ class HouseCoordinator:
         self.last_pair = data.get("last_pair")
         self.pending = data.get("pending", False)
         self.visits.load(data)
+        self.water.load(data)
         # Persist the scene-defining configuration to distinguish startup replay
         # from a config edit, including edits made while HA was stopped.
         changed_config = data.get("selection_config") != self.selection_config
@@ -116,6 +119,7 @@ class HouseCoordinator:
                     self.tree.resolve(self.state, self.overlay)[index] for index in (0, 2)
                 ],
                 **self.visits.data(),
+                **self.water.data(),
             }
         )
 
@@ -223,6 +227,7 @@ class HouseCoordinator:
                     self.event("overlay_changed", overlay=overlay, previous=previous["overlay"])
                 if self.triggers:
                     self.triggers.reconcile_away()
+                self.water.schedule()
             if needed and not quiet:
                 await self.apply(base, source, overlay_scene)
             if changed:
@@ -364,8 +369,9 @@ class HouseCoordinator:
 
     async def started(self, event=None):
         self.start_unsub = None
-        # Scenes and locks exist now; a visit that expired while stopped ends here.
+        # Scenes, locks and valves exist now; a visit that expired while stopped ends here.
         self.visits.schedule()
+        self.water.start()
         try:
             await self.evaluate(refresh_calendars=True)
         except Exception:
@@ -384,6 +390,7 @@ class HouseCoordinator:
 
     def stop(self):
         self.visits.stop()
+        self.water.stop()
         if self.triggers:
             self.triggers.stop()
         if self.start_unsub:
@@ -423,4 +430,5 @@ class HouseCoordinator:
             "available_overlays": ["none", *self.tree.overlays],
             "visit": deepcopy(self.visits.active),
             "last_visit": deepcopy(self.visits.last),
+            "water": deepcopy(self.water.result),
         }

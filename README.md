@@ -27,8 +27,8 @@ children and deeper levels; move or rename nodes; assign a scene at any level.
 Open **Settings → Devices & services → House State → Configure**. Structured
 menus and forms let you edit states, parent/default-child relationships, scenes,
 occupancy, initial state and roles; overlays and their activation rules; trigger
-entities and automatic arrival/departure; guest visits; night schedules; and
-legacy mirrors.
+entities and automatic arrival/departure; guest visits; water valves; night
+schedules; and legacy mirrors.
 The `house_state.set_config` action remains available for automations.
 
 Edits stay in a draft until you choose **Save** and submit its confirmation.
@@ -84,7 +84,7 @@ The hub attributes are `state`, `active_path` (root to leaf IDs), `state_tree`,
 `scene_stale`, `occupied`, `last_scene`, `last_changed_by`, `since`,
 `previous_state`, `application_pending`, `scene_warnings`, `config`,
 `auto_return_enabled`, `night_schedule`, `available_overlays`, `visit` (the
-active visit or null) and `last_visit`.
+active visit or null), `last_visit` and `water` (the last valve change).
 
 ## Actions
 
@@ -158,6 +158,7 @@ data:
   visit_exit_grace: 120
   visit_reapply_scene: true
   visit_lock_entities: [lock.front_door]
+  water_valves: [valve.main_water]
 ```
 
 IDs match `[a-z][a-z0-9_]*` with at most 64 characters. Names are nonempty and
@@ -361,6 +362,39 @@ is not an arrival, but it leaves the door unlocked.
 Home Assistant's `context.user_id` is recorded as supporting detail only. It is
 empty for many callers and is not what identifies a guest.
 
+## Water valves
+
+List the valves that shut off the water under **Configure → Water**
+(`water_valves`: `valve` entities, or `switch` entities for relay-driven
+valves, where on means water flows).
+
+| Situation | Water |
+|---|---|
+| The house enters the vacation role's state, or a state beneath it | Off |
+| A guest visit starts during vacation | On, for as long as the visit lasts |
+| That visit ends or expires while still on vacation | Off again |
+| The house leaves vacation (return, family arrival, or any other state) | On |
+| Away, and any change that doesn't cross the vacation boundary | Untouched |
+
+House State operates the valves only when the water it wants changes. A restart,
+reload or settings change never opens or closes them, and the first start
+adopts whatever the valves are doing. A valve that something else closed, such
+as a leak automation, stays closed until House State itself next needs the
+water on: a guest arriving during vacation, or the return from vacation. Keep
+leak protection in its own automation that closes the valve again if needed.
+Valves you add while on vacation are closed at the next change, not when you
+save.
+
+Each valve counts as done only when it reports the state it was sent to
+(`closed`/`open`, or `off`/`on` for a switch), within 30 seconds. The result is
+published as the hub's `water` attribute and a `water` event: `desired` (`open`
+or `closed`), `status` (`running`, `ok` or `failed`), and per valve the reached
+state or `unavailable`, `failed` (the command was refused) or `unverified`.
+A failure is logged. It's retried when that valve comes back online, at the next
+change, or at the next start; a change missed while Home Assistant was stopped
+is applied at start. Ending a guest visit waits for the valves, so `visit_end`
+includes `water` in its `cleanup` result, and a valve failure fails the cleanup.
+
 ## Persistence and events
 
 Desired state, overlay, timestamp and a pending marker are saved before scenes
@@ -377,7 +411,8 @@ boundary, reason), `overlay_changed`, `rejected` (field/value/because), and
 `scene_applied` (scene, resolved_from node ID, overlay_scene), `visit_started`
 and `visit_ended` (visit_id, source, actor, user_id, expires; `visit_ended`
 adds outcome `ended`/`expired`/`arrived`/`superseded` and cleanup), and
-`arrival_suppressed` (reason `door`/`gate`, source entity, visit_id).
+`arrival_suppressed` (reason `door`/`gate`, source entity, visit_id), and
+`water` (desired, status, valves, updated).
 
 ## Migration from helpers and scene automations
 

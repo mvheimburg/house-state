@@ -7,7 +7,6 @@ other end reapplies the unoccupied scene and locks configured doors, but only
 while the house is still unoccupied.
 """
 
-import asyncio
 import logging
 import uuid
 from copy import deepcopy
@@ -15,18 +14,13 @@ from datetime import timedelta
 
 from homeassistant.core import callback
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers.event import (
-    async_track_point_in_utc_time,
-    async_track_state_change_event,
-)
+from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util import dt as dt_util
 
 from .const import MIN_DURATION
+from .devices import actuate
 
 _LOGGER = logging.getLogger(__name__)
-# How long a lock may take to report locked after accepting the command.
-LOCK_VERIFY_TIMEOUT = 30
-UNKNOWN = {"unknown", "unavailable"}
 
 
 def _valid(record):
@@ -157,6 +151,8 @@ class Visits:
                 raise
             self.schedule()
         coordinator.notify()
+        # A guest during vacation gets water for as long as they are here.
+        coordinator.water.schedule()
         if replaced:
             coordinator.event("visit_ended", **self.summary(replaced))
         coordinator.event("visit_started", **self.summary(self.active))
@@ -178,6 +174,10 @@ class Visits:
             self.cancel_timer()
         coordinator.notify()
         record["cleanup"] = await self.cleanup()
+        if (water := await self.water()) is not None:
+            record["cleanup"]["water"] = water
+            if water["status"] == "failed":
+                record["cleanup"]["status"] = "failed"
         try:
             await coordinator.save()
         except Exception:
@@ -239,39 +239,14 @@ class Visits:
             result["status"] = "failed"
         return result
 
+    async def water(self):
+        """Shut the water again if the visit was during vacation."""
+        water = self.coordinator.water
+        result = await water.reconcile()
+        if result is None and water.result and water.result["desired"] == water.desired():
+            # Another trigger was already turning the valves; report its outcome.
+            result = deepcopy(water.result)
+        return result if water.valves else None
+
     async def lock(self, entity):
-        """Lock one entity and wait until it reports locked; a call is not proof."""
-        state = self.hass.states.get(entity)
-        if state is None or state.state in UNKNOWN:
-            return "unavailable"
-        if state.state == "locked":
-            return "locked"
-        done = asyncio.Event()
-
-        @callback
-        def changed(event):
-            new = event.data["new_state"]
-            if new is None or new.state in {"locked", "jammed"} | UNKNOWN:
-                done.set()
-
-        unsub = async_track_state_change_event(self.hass, [entity], changed)
-        try:
-            try:
-                await self.hass.services.async_call(
-                    "lock", "lock", {"entity_id": entity}, blocking=True
-                )
-            except Exception:
-                _LOGGER.warning("Could not lock %s after a visit", entity, exc_info=True)
-                return "failed"
-            if (state := self.hass.states.get(entity)) is None or state.state != "locked":
-                try:
-                    async with asyncio.timeout(LOCK_VERIFY_TIMEOUT):
-                        await done.wait()
-                except TimeoutError:
-                    return "unverified"
-        finally:
-            unsub()
-        state = self.hass.states.get(entity)
-        if state is None or state.state in UNKNOWN:
-            return "unavailable"
-        return {"locked": "locked", "jammed": "jammed"}.get(state.state, "unverified")
+        return await actuate(self.hass, entity, "lock", "locked", failures=("jammed",))

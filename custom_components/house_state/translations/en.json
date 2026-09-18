@@ -41,6 +41,7 @@
           "overlays": "Overlays",
           "presence": "Arrival and departure",
           "visits": "Guest visits",
+          "water": "Water",
           "night": "Night schedule",
           "legacy": "Legacy helpers",
           "save": "Save all changes",
@@ -92,6 +93,14 @@
           "visit_exit_grace": "Exit window after a visit (seconds)",
           "visit_reapply_scene": "Reapply the scene when a visit ends",
           "visit_lock_entities": "Locks to lock when a visit ends",
+          "back": "Return without changing this section"
+        }
+      },
+      "water": {
+        "title": "Water",
+        "description": "Valves that shut off the water while the house is in the vacation role's state (or beneath it). A guest visit turns the water on while it lasts; ending the visit, or leaving vacation, turns it back on or off. Each valve must report the new state. Saving settings never operates valves: they change at the next vacation, visit or return.",
+        "data": {
+          "water_valves": "Water valves",
           "back": "Return without changing this section"
         }
       },
@@ -429,6 +438,10 @@
         },
         "visit_lock_entities": {
           "name": "Locks to lock when a visit ends",
+          "description": "See the README for the configuration schema."
+        },
+        "water_valves": {
+          "name": "Water valves",
           "description": "See the README for the configuration schema."
         }
       }

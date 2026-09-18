@@ -41,6 +41,7 @@
           "overlays": "Overlegg",
           "presence": "Hjemkomst og avreise",
           "visits": "Gjestebesøk",
+          "water": "Vann",
           "night": "Nattplan",
           "legacy": "Gamle hjelpeentiteter",
           "save": "Lagre alle endringer",
@@ -92,6 +93,14 @@
           "visit_exit_grace": "Utgangsvindu etter besøk (sekunder)",
           "visit_reapply_scene": "Bruk scenen på nytt når besøket avsluttes",
           "visit_lock_entities": "Låser som låses når besøket avsluttes",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "water": {
+        "title": "Vann",
+        "description": "Ventiler som stenger vannet mens huset er i tilstanden for ferierollen (eller under den). Et gjestebesøk åpner vannet så lenge det varer; når besøket avsluttes eller ferien slutter, stenges eller åpnes det igjen. Hver ventil må bekrefte den nye tilstanden. Lagring av innstillinger betjener aldri ventiler: de endres ved neste ferie, besøk eller hjemkomst.",
+        "data": {
+          "water_valves": "Vannventiler",
           "back": "Tilbake uten å endre denne delen"
         }
       },
@@ -429,6 +438,10 @@
         },
         "visit_lock_entities": {
           "name": "Låser som låses når besøket avsluttes",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "water_valves": {
+          "name": "Vannventiler",
           "description": "Se README for feltformat og gyldige verdier."
         }
       }

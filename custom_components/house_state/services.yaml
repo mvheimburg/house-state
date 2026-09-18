@@ -155,6 +155,13 @@ set_config:
         entity:
           domain: lock
           multiple: true
+    water_valves:
+      selector:
+        entity:
+          domain:
+            - valve
+            - switch
+          multiple: true
 visit_start:
   target:
     entity:

@@ -52,4 +52,5 @@ DEFAULTS = {
     "visit_exit_grace": 120,
     "visit_reapply_scene": True,
     "visit_lock_entities": [],
+    "water_valves": [],
 }

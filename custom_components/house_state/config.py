@@ -171,6 +171,11 @@ def validate_config(hass, values, *, check_scenes=True):
             config[key] = cv.entity_ids(config[key])
             if any(not entity.startswith(domain + ".") for entity in config[key]):
                 raise vol.Invalid(f"{key} requires {domain} entities")
+        config["water_valves"] = cv.entity_ids(config["water_valves"])
+        if any(
+            entity.split(".", 1)[0] not in {"valve", "switch"} for entity in config["water_valves"]
+        ):
+            raise vol.Invalid("water_valves requires valve or switch entities")
         for key in ("auto_return", "auto_away", "visit_reapply_scene"):
             config[key] = cv.boolean(config[key])
         config["auto_away_grace"] = vol.All(vol.Coerce(int), vol.Range(min=0))(
