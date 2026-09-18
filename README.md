@@ -15,7 +15,8 @@ copy `custom_components/house_state` into your HA configuration's
 services. One entry represents one house; multiple houses are independent.
 
 The optional [House State card](https://github.com/mvheimburg/lovelace-house-state)
-provides a visual tree editor and a compact view of the active path. The
+provides everyday state and overlay controls, Apply scene now, and a compact
+view of the active path. Its settings cog links to the integration page. The
 integration also works without that card, including with Bubble select cards.
 
 ## Build your tree
@@ -23,8 +24,24 @@ integration also works without that card, including with Bubble select cards.
 The editable starter template is Home → Day → None/TV/Eating, Home → Night,
 Away, and Vacation. These names and IDs carry no built-in behavior. Add roots,
 children and deeper levels; move or rename nodes; assign a scene at any level.
-Use the card's settings, the integration options flow's JSON fields, or the
-`house_state.set_config` action.
+Open **Settings → Devices & services → House State → Configure**. Structured
+menus and forms let you edit states, parent/default-child relationships, scenes,
+occupancy, initial state and roles; overlays and their activation rules; trigger
+entities and automatic arrival/departure; night schedules; and legacy mirrors.
+The `house_state.set_config` action remains available for automations.
+
+Edits stay in a draft until you choose **Save** and submit its confirmation.
+Closing the flow or choosing **Discard changes** leaves saved settings untouched.
+Forms include a return-without-changing-this-form option. You can adjust related
+settings in several sections before saving; validation checks the complete draft
+and identifies problems before anything is persisted. Missing members inside a
+scene produce a warning to acknowledge before saving.
+
+State IDs remain stable when editing names or relationships. Removing a state
+promotes its children to its parent and clears references from default children
+and roles. If it was the initial state, select a replacement. You cannot remove
+the final state or the only state restriction of an overlay rule; edit that rule
+first. These safeguards avoid silently broadening when an overlay activates.
 
 Selecting a node follows its `default_child` recursively. Without a default,
 the selected parent can remain active itself. Scene resolution walks from the
@@ -139,8 +156,9 @@ are rejected. At least one state is required. Overlay IDs `none` and `auto` are
 reserved.
 Every nonempty scene must be an existing scene entity. Missing entities inside
 scenes produce warnings in setup/options and in `scene_warnings`; they do not
-prevent saving the scene. Options flows expose structured JSON; the card offers
-a visual editor for these same fields.
+prevent saving the scene. The Configure flow provides structured forms for these fields; the dashboard
+card keeps everyday actions and display options. Existing stored configuration
+and service payloads remain compatible.
 
 Defaults: auto-return true, auto-away false, 300-second grace, empty trigger
 entity lists, schedule off, no legacy mirrors. Schedules accept `{type: off}`, a
@@ -281,7 +299,7 @@ ruff check custom_components tests
 ```
 
 Tests run against real Home Assistant 2026.2.3. CI checks tests, Ruff, manifest
-version parity, hassfest and HACS. Version `0.2.0` is synchronized in
+version parity, hassfest and HACS. Version `0.3.0` is synchronized in
 `pyproject.toml` and the manifest. Pushing a version bump to main runs CI and
 then creates `v<version>` plus a `house_state.zip` GitHub release. No release is
 created by local tests or commits.

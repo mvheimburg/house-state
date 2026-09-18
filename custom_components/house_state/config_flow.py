@@ -8,6 +8,7 @@ from homeassistant.helpers import selector
 
 from .config import scene_warnings, validate_config
 from .const import DEFAULTS, DOMAIN
+from .options_flow import HouseOptionsFlow
 
 
 def schema(values, user=False):
@@ -94,11 +95,3 @@ class HouseStateConfigFlow(FlowMixin, config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         return HouseOptionsFlow()
-
-
-class HouseOptionsFlow(FlowMixin, config_entries.OptionsFlow):
-    async def async_step_init(self, user_input=None):
-        return await self.form("init", user_input, DEFAULTS | dict(self.config_entry.options))
-
-    def finish(self):
-        return self.async_create_entry(title="", data=self._pending)

@@ -26,8 +26,9 @@ async def test_scene_member_warning_and_options(hass, entry, scenes):
     hass.states.async_set("scene.night", "unknown", {"entity_id": ["lock.missing"]})
     flow = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"state_tree": TREE}
+        flow["flow_id"], {"next_step_id": "save"}
     )
+    result = await hass.config_entries.options.async_configure(flow["flow_id"], {})
     assert result["step_id"] == "warnings"
     assert "lock.missing" in result["description_placeholders"]["warnings"]
     result = await hass.config_entries.options.async_configure(flow["flow_id"], {})

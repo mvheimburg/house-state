@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "House State",
-        "description": "Bygg et eget tre med navn, foreldre, scener og standardbarn. Bruk kortets visuelle trebygger eller JSON-feltene her. Roller peker til tilstands-ID-er. Endringer aktiverer ikke scener automatisk.",
+        "description": "Opprett huset med starttreet, eller tilpass startkonfigurasjonen. Bruk deretter Innstillinger → Enheter og tjenester → House State → Konfigurer for strukturerte innstillinger. Konfigurasjonsendringer aktiverer ikke scener.",
         "data": {
           "name": "Navn på huset",
           "state_tree": "Tilstandstre",
@@ -33,30 +33,235 @@
   "options": {
     "step": {
       "init": {
-        "title": "House State",
-        "description": "Bygg et eget tre med navn, foreldre, scener og standardbarn. Bruk kortets visuelle trebygger eller JSON-feltene her. Roller peker til tilstands-ID-er. Endringer aktiverer ikke scener automatisk.",
-        "data": {
-          "state_tree": "Tilstandstre",
-          "initial_state": "ID for starttilstand",
+        "title": "Innstillinger for House State",
+        "description": "Rediger delene og velg deretter Lagre alle endringer. Ingenting endres før du lagrer. Forkast eller lukk for å avbryte. Lagring aktiverer ikke scener.",
+        "menu_options": {
+          "states": "Tilstander",
+          "general": "Starttilstand og roller",
           "overlays": "Overlegg",
-          "roles": "Automatiseringsroller",
+          "presence": "Hjemkomst og avreise",
+          "night": "Nattplan",
+          "legacy": "Gamle hjelpeentiteter",
+          "save": "Lagre alle endringer",
+          "discard": "Forkast alle endringer"
+        }
+      },
+      "states": {
+        "title": "Tilstander",
+        "description": "Legg til eller rediger tilstander og plasseringen i treet. ID-er beholdes når du endrer navn.",
+        "menu_options": {
+          "state_add": "Legg til tilstand",
+          "state_edit": "Rediger tilstand",
+          "state_remove": "Slett tilstand",
+          "init": "Tilbake til innstillinger"
+        }
+      },
+      "general": {
+        "title": "Starttilstand og roller",
+        "description": "Velg — for å deaktivere en rolle. Hjemkomst og natt må føre til en tilstand med noen hjemme; avreise og ferie til en tilstand uten noen hjemme.",
+        "data": {
+          "initial_state": "Starttilstand",
+          "arrival": "Rolle ved hjemkomst",
+          "departure": "Rolle ved avreise",
+          "vacation": "Ferierolle",
+          "night": "Nattrolle",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "presence": {
+        "title": "Hjemkomst og avreise",
+        "description": "Velg entitetene som utløser hjemkomst og avreise. Ventetiden forsinker automatisk avreise.",
+        "data": {
           "door_entities": "Låser for hjemkomst",
           "gate_entities": "Porter for hjemkomst",
           "person_entities": "Personer",
           "auto_return": "Automatisk hjemkomst",
           "auto_away": "Automatisk avreise",
-          "auto_away_grace": "Ventetid før avreise",
-          "night_schedule": "Nattplan",
-          "legacy_mirror": "Gamle hjelpeentiteter"
+          "auto_away_grace": "Ventetid før avreise (sekunder)",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "legacy": {
+        "title": "Gamle hjelpeentiteter",
+        "description": "Valgfrie input_select-hjelpere speiler valgt tilstand og overlegg. Tøm et felt for å stoppe speilingen.",
+        "data": {
+          "state": "Tilstand",
+          "overlay": "Overlegg",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "night": {
+        "title": "Nattplan",
+        "description": "Aktiver nattrollen ved et fast lokalt klokkeslett eller i forhold til soloppgang/solnedgang.",
+        "data": {
+          "type": "Tidsplan",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "night_details": {
+        "title": "Detaljer for nattplan",
+        "description": "For solhendelser betyr negativ forskyvning tidligere og positiv forskyvning senere.",
+        "data": {
+          "time": "Lokalt klokkeslett",
+          "event": "Solhendelse",
+          "offset": "Forskyvning (sekunder)",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "save": {
+        "title": "Lagre alle endringer",
+        "description": "Send inn for å kontrollere og lagre hele utkastet. Ved feil går du tilbake og retter den aktuelle delen. Lagring aktiverer ikke scener.\n\n{error}",
+        "data": {
+          "back": "Tilbake uten å endre denne delen"
         }
       },
       "warnings": {
         "title": "Manglende sceneentiteter",
-        "description": "Disse entitetene finnes ikke i Home Assistant. Rett scenene ved behov. Fortsett for å lagre:\n\n{warnings}"
+        "description": "Disse entitetene mangler i Home Assistant. Fortsett for å lagre, eller gå tilbake til innstillingene:\n\n{warnings}",
+        "data": {
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "state_add": {
+        "title": "Legg til tilstand",
+        "description": "Bruk en unik ID med små bokstaver, tall og understrek, og start med en bokstav. La scenen være tom for å arve fra en forelder.",
+        "data": {
+          "id": "Fast ID",
+          "name": "Navn",
+          "parent": "Forelder (— for rot)",
+          "default_child": "Standardbarn (— for ingen)",
+          "scene": "Scene (valgfritt)",
+          "occupied": "Tilstedeværelse",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "state_details": {
+        "title": "Rediger tilstand",
+        "description": "Bare direkte barn kan være standardbarn. En tilstand kan ikke plasseres under seg selv eller en etterkommer. La scenen være tom for å arve.",
+        "data": {
+          "name": "Navn",
+          "parent": "Forelder (— for rot)",
+          "default_child": "Standardbarn (— for ingen)",
+          "scene": "Scene (valgfritt)",
+          "occupied": "Tilstedeværelse",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "state_edit": {
+        "title": "Velg tilstand som skal redigeres",
+        "description": "Velg tilstanden etter navn og fast ID.",
+        "data": {
+          "state": "Tilstand",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "state_remove": {
+        "title": "Velg tilstand som skal slettes",
+        "description": "Slettingen bekreftes før utkastet endres.",
+        "data": {
+          "state": "Tilstand",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "state_delete": {
+        "title": "Slett tilstand",
+        "description": "Slette {name}? Barna flyttes til forelderen (eller blir røtter). Standardbarn og roller som peker til tilstanden, tømmes. Tilstanden fjernes fra overleggsvilkår; sletting blokkeres hvis dette ville fjerne deres eneste tilstandsvilkår. Velg ny starttilstand ved behov. Den siste tilstanden kan ikke slettes.",
+        "data": {
+          "confirm": "Bekreft sletting",
+          "replacement": "Ny starttilstand",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "overlays": {
+        "title": "Overlegg",
+        "description": "Legg til manuelle overlegg eller aktiveringsregler. Høyere prioritet vinner når flere regler passer.",
+        "menu_options": {
+          "overlay_add": "Legg til overlegg",
+          "overlay_edit": "Rediger overlegg",
+          "overlay_remove": "Slett overlegg",
+          "init": "Tilbake til innstillinger"
+        }
+      },
+      "overlay_add": {
+        "title": "Legg til overlegg",
+        "description": "Velg en unik ID og aktiveringsregel. ID-ene none og auto er reservert. Tom liste over tillatte tilstander betyr alle tilstander.",
+        "data": {
+          "id": "Fast ID",
+          "name": "Navn",
+          "scene": "Scene (valgfritt)",
+          "priority": "Prioritet",
+          "when_occupied": "Krav til tilstedeværelse",
+          "when_state": "Tillatte tilstander (tomt for alle)",
+          "rule": "Aktiveringsregel",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "overlay_details": {
+        "title": "Rediger overlegg",
+        "description": "Endring av regeltype erstatter den tidligere aktiveringsregelen. Tøm scenen for å fjerne tilordningen.",
+        "data": {
+          "name": "Navn",
+          "scene": "Scene (valgfritt)",
+          "priority": "Prioritet",
+          "when_occupied": "Krav til tilstedeværelse",
+          "when_state": "Tillatte tilstander (tomt for alle)",
+          "rule": "Aktiveringsregel",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "overlay_edit": {
+        "title": "Velg overlegg som skal redigeres",
+        "description": "Velg et overlegg etter navn og ID.",
+        "data": {
+          "overlay": "Overlegg",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "overlay_remove": {
+        "title": "Velg overlegg som skal slettes",
+        "description": "Slettingen bekreftes før utkastet endres.",
+        "data": {
+          "overlay": "Overlegg",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "overlay_delete": {
+        "title": "Slett overlegg",
+        "description": "Slette {name} og aktiveringsregelen fra utkastet?",
+        "data": {
+          "confirm": "Bekreft sletting",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "overlay_rule": {
+        "title": "Aktiveringsregel",
+        "description": "Regel for {name}. Faste datoer bruker MM-DD (inkludert; kan krysse nyttår). Påske bruker forskyvning i dager. For ukedagsregler velger du måned eller ankerdato; bare valgt felt brukes. Negative forekomster teller bakover. Tilbake forkaster denne overleggsendringen.",
+        "data": {
+          "calendar": "Kalender",
+          "match": "Mønster for hendelsestittel (valgfritt regulært uttrykk)",
+          "from": "Fra",
+          "to": "Til",
+          "weekday": "Ukedag",
+          "nth": "Forekomst (negativt teller bakover; aldri null)",
+          "anchor_kind": "Tell innenfor måned eller fra dato",
+          "month": "Måned (1–12)",
+          "anchor": "Ankerdato (MM-DD)",
+          "days": "Varighet (dager)",
+          "back": "Tilbake uten å endre denne delen"
+        }
       }
     },
     "error": {
-      "invalid_config": "Ugyldig tre, rolle, scene eller innstilling. Kontroller ID-er, foreldre og scenene."
+      "invalid_config": "Ugyldig konfigurasjon. Kontroller tilstandsreferanser, tilstedeværelse for roller, scener og innstillinger. Gå tilbake til aktuell del for å rette feilen. Ukjente lagrede felt beholdes og må rettes før lagring.",
+      "invalid_state": "Ugyldig eller duplisert ID/navn, forelder, sirkel eller standardbarn.",
+      "last_state": "Den siste tilstanden kan ikke slettes. Legg til en annen tilstand først.",
+      "state_gates_overlay": "Et overlegg bruker dette som sin eneste tillatte tilstand. Endre overleggsvilkåret før du sletter tilstanden.",
+      "invalid_overlay": "Bruk en unik gyldig ID og et navn som ikke er tomt. none og auto er reserverte ID-er.",
+      "invalid_rule": "Ugyldig aktiveringsregel. Kontroller kalender, regulært uttrykk, datoer og forekomst (ikke null).",
+      "select_overlay": "Velg et overlegg, eller gå tilbake for å legge til et."
+    },
+    "abort": {
+      "discarded": "Endringene er forkastet."
     }
   },
   "entity": {
@@ -185,6 +390,55 @@
           "name": "Gamle hjelpeentiteter",
           "description": "Se README for feltformat og gyldige verdier."
         }
+      }
+    }
+  },
+  "selector": {
+    "occupancy": {
+      "options": {
+        "inherit": "Arv",
+        "any": "Uansett",
+        "occupied": "Noen hjemme",
+        "unoccupied": "Ingen hjemme"
+      }
+    },
+    "night_type": {
+      "options": {
+        "off": "Av",
+        "fixed": "Fast klokkeslett",
+        "sun": "Soloppgang eller solnedgang"
+      }
+    },
+    "sun_event": {
+      "options": {
+        "sunset": "Solnedgang",
+        "sunrise": "Soloppgang"
+      }
+    },
+    "rule_type": {
+      "options": {
+        "manual": "Manuelt",
+        "calendar": "Kalender",
+        "fixed": "Faste datoer",
+        "easter": "Forskyvning fra påske",
+        "nth_weekday": "Bestemt ukedagsforekomst"
+      }
+    },
+    "anchor_kind": {
+      "options": {
+        "month": "Innenfor en måned",
+        "anchor": "I forhold til en dato"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Mandag",
+        "tue": "Tirsdag",
+        "wed": "Onsdag",
+        "thu": "Torsdag",
+        "fri": "Fredag",
+        "sat": "Lørdag",
+        "sun": "Søndag"
       }
     }
   }

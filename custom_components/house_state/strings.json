@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "House State",
-        "description": "Build a tree with names, parents, scenes and default children. Use the card’s visual tree editor or the JSON fields here. Roles refer to state IDs. Configuration changes do not apply scenes automatically.",
+        "description": "Create your house with the starter tree, or customize the initial configuration. Afterwards, use Settings → Devices & services → House State → Configure for structured settings. Configuration changes do not activate scenes.",
         "data": {
           "name": "House name",
           "state_tree": "State tree",
@@ -33,30 +33,235 @@
   "options": {
     "step": {
       "init": {
-        "title": "House State",
-        "description": "Build a tree with names, parents, scenes and default children. Use the card’s visual tree editor or the JSON fields here. Roles refer to state IDs. Configuration changes do not apply scenes automatically.",
-        "data": {
-          "state_tree": "State tree",
-          "initial_state": "Initial state ID",
+        "title": "House State settings",
+        "description": "Edit sections, then choose Save all changes. Nothing is applied until you save. Discard or close to cancel. Saving does not activate scenes.",
+        "menu_options": {
+          "states": "States",
+          "general": "Initial state and roles",
           "overlays": "Overlays",
-          "roles": "Automation roles",
+          "presence": "Arrival and departure",
+          "night": "Night schedule",
+          "legacy": "Legacy helpers",
+          "save": "Save all changes",
+          "discard": "Discard all changes"
+        }
+      },
+      "states": {
+        "title": "States",
+        "description": "Add or edit states and their position in the tree. IDs stay unchanged when editing names.",
+        "menu_options": {
+          "state_add": "Add state",
+          "state_edit": "Edit state",
+          "state_remove": "Remove state",
+          "init": "Back to settings"
+        }
+      },
+      "general": {
+        "title": "Initial state and roles",
+        "description": "Choose — to disable a role. Arrival and night must resolve to an occupied state; departure and vacation to an unoccupied state.",
+        "data": {
+          "initial_state": "Initial state",
+          "arrival": "Arrival role",
+          "departure": "Departure role",
+          "vacation": "Vacation role",
+          "night": "Night role",
+          "back": "Return without changing this section"
+        }
+      },
+      "presence": {
+        "title": "Arrival and departure",
+        "description": "Choose the entities that trigger arrival and departure. The grace period delays automatic departure.",
+        "data": {
           "door_entities": "Arrival locks",
           "gate_entities": "Arrival covers",
           "person_entities": "People",
           "auto_return": "Automatic arrival",
           "auto_away": "Automatic departure",
-          "auto_away_grace": "Departure grace period",
-          "night_schedule": "Night schedule",
-          "legacy_mirror": "Legacy helpers"
+          "auto_away_grace": "Departure grace period (seconds)",
+          "back": "Return without changing this section"
+        }
+      },
+      "legacy": {
+        "title": "Legacy helpers",
+        "description": "Optional input_select helpers mirror the selected state and overlay. Clear a field to stop mirroring it.",
+        "data": {
+          "state": "State",
+          "overlay": "Overlay",
+          "back": "Return without changing this section"
+        }
+      },
+      "night": {
+        "title": "Night schedule",
+        "description": "Run the night role at a fixed local time or relative to sunrise/sunset.",
+        "data": {
+          "type": "Schedule",
+          "back": "Return without changing this section"
+        }
+      },
+      "night_details": {
+        "title": "Night schedule details",
+        "description": "For sun events, a negative offset runs earlier and a positive offset runs later.",
+        "data": {
+          "time": "Local time",
+          "event": "Sun event",
+          "offset": "Offset (seconds)",
+          "back": "Return without changing this section"
+        }
+      },
+      "save": {
+        "title": "Save all changes",
+        "description": "Submit to validate and save the entire draft. If validation fails, go back and correct the relevant section. Scenes are not activated by saving.\n\n{error}",
+        "data": {
+          "back": "Return without changing this section"
         }
       },
       "warnings": {
         "title": "Missing scene members",
-        "description": "These entities are missing from Home Assistant. Fix the scenes as needed. Continue to save:\n\n{warnings}"
+        "description": "These entities are missing from Home Assistant. Continue to save, or return to settings:\n\n{warnings}",
+        "data": {
+          "back": "Return without changing this section"
+        }
+      },
+      "state_add": {
+        "title": "Add state",
+        "description": "Use a unique ID with lowercase letters, digits and underscores, starting with a letter. Leave the scene empty to inherit from an ancestor.",
+        "data": {
+          "id": "Stable ID",
+          "name": "Name",
+          "parent": "Parent (— for root)",
+          "default_child": "Default child (— for none)",
+          "scene": "Scene (optional)",
+          "occupied": "Occupancy",
+          "back": "Return without changing this section"
+        }
+      },
+      "state_details": {
+        "title": "Edit state",
+        "description": "Only direct children can be defaults. A state cannot be placed beneath itself or a descendant. Leave the scene empty to inherit.",
+        "data": {
+          "name": "Name",
+          "parent": "Parent (— for root)",
+          "default_child": "Default child (— for none)",
+          "scene": "Scene (optional)",
+          "occupied": "Occupancy",
+          "back": "Return without changing this section"
+        }
+      },
+      "state_edit": {
+        "title": "Choose state to edit",
+        "description": "Select the state by name and stable ID.",
+        "data": {
+          "state": "State",
+          "back": "Return without changing this section"
+        }
+      },
+      "state_remove": {
+        "title": "Choose state to remove",
+        "description": "Removal is reviewed before changing the draft.",
+        "data": {
+          "state": "State",
+          "back": "Return without changing this section"
+        }
+      },
+      "state_delete": {
+        "title": "Remove state",
+        "description": "Remove {name}? Its children move to its parent (or become roots). Defaults and roles pointing to it are cleared. Overlay conditions drop this state; removal is blocked if that would remove their only state condition. Select a new initial state if needed. The last state cannot be removed.",
+        "data": {
+          "confirm": "Confirm removal",
+          "replacement": "New initial state",
+          "back": "Return without changing this section"
+        }
+      },
+      "overlays": {
+        "title": "Overlays",
+        "description": "Add manual overlays or activation rules. Higher priority wins when several rules match.",
+        "menu_options": {
+          "overlay_add": "Add overlay",
+          "overlay_edit": "Edit overlay",
+          "overlay_remove": "Remove overlay",
+          "init": "Back to settings"
+        }
+      },
+      "overlay_add": {
+        "title": "Add overlay",
+        "description": "Choose a unique ID and activation rule. IDs none and auto are reserved. Empty allowed states means all states.",
+        "data": {
+          "id": "Stable ID",
+          "name": "Name",
+          "scene": "Scene (optional)",
+          "priority": "Priority",
+          "when_occupied": "Occupancy condition",
+          "when_state": "Allowed states (empty for all)",
+          "rule": "Activation rule",
+          "back": "Return without changing this section"
+        }
+      },
+      "overlay_details": {
+        "title": "Edit overlay",
+        "description": "Changing the rule type replaces its previous activation rule. Clear the scene to leave it unassigned.",
+        "data": {
+          "name": "Name",
+          "scene": "Scene (optional)",
+          "priority": "Priority",
+          "when_occupied": "Occupancy condition",
+          "when_state": "Allowed states (empty for all)",
+          "rule": "Activation rule",
+          "back": "Return without changing this section"
+        }
+      },
+      "overlay_edit": {
+        "title": "Choose overlay to edit",
+        "description": "Select an overlay by name and ID.",
+        "data": {
+          "overlay": "Overlay",
+          "back": "Return without changing this section"
+        }
+      },
+      "overlay_remove": {
+        "title": "Choose overlay to remove",
+        "description": "Removal is reviewed before changing the draft.",
+        "data": {
+          "overlay": "Overlay",
+          "back": "Return without changing this section"
+        }
+      },
+      "overlay_delete": {
+        "title": "Remove overlay",
+        "description": "Remove {name} and its activation rule from the draft?",
+        "data": {
+          "confirm": "Confirm removal",
+          "back": "Return without changing this section"
+        }
+      },
+      "overlay_rule": {
+        "title": "Activation rule",
+        "description": "Rule for {name}. Fixed dates use MM-DD (inclusive; may cross New Year). Easter uses day offsets. For weekday rules, choose month or anchor date; only the selected field is used. Negative occurrences count backwards. Returning discards this overlay edit.",
+        "data": {
+          "calendar": "Calendar",
+          "match": "Event title pattern (optional regular expression)",
+          "from": "Start",
+          "to": "End",
+          "weekday": "Weekday",
+          "nth": "Occurrence (negative counts backwards; never zero)",
+          "anchor_kind": "Count within month or relative to date",
+          "month": "Month (1–12)",
+          "anchor": "Anchor date (MM-DD)",
+          "days": "Duration (days)",
+          "back": "Return without changing this section"
+        }
       }
     },
     "error": {
-      "invalid_config": "Invalid tree, role, scene or setting. Check IDs, parents, occupancy roles and scene entities."
+      "invalid_config": "Invalid configuration. Check state references, role occupancy, scenes and settings. Return to the relevant section to correct it. Unsupported stored fields are preserved and must be corrected before saving.",
+      "invalid_state": "Invalid or duplicate ID/name, parent, cycle or default child.",
+      "last_state": "The last state cannot be removed. Add another state first.",
+      "state_gates_overlay": "An overlay uses this as its only allowed state. Edit that overlay condition before removing the state.",
+      "invalid_overlay": "Use a unique valid ID and nonempty name. none and auto are reserved IDs.",
+      "invalid_rule": "Invalid activation rule. Check calendar, regular expression, dates and occurrence (not zero).",
+      "select_overlay": "Select an overlay, or return to add one."
+    },
+    "abort": {
+      "discarded": "Changes discarded."
     }
   },
   "entity": {
@@ -185,6 +390,55 @@
           "name": "Legacy helpers",
           "description": "See the README for the configuration schema."
         }
+      }
+    }
+  },
+  "selector": {
+    "occupancy": {
+      "options": {
+        "inherit": "Inherit",
+        "any": "Any",
+        "occupied": "Someone home",
+        "unoccupied": "Nobody home"
+      }
+    },
+    "night_type": {
+      "options": {
+        "off": "Off",
+        "fixed": "Fixed time",
+        "sun": "Sunrise or sunset"
+      }
+    },
+    "sun_event": {
+      "options": {
+        "sunset": "Sunset",
+        "sunrise": "Sunrise"
+      }
+    },
+    "rule_type": {
+      "options": {
+        "manual": "Manual",
+        "calendar": "Calendar",
+        "fixed": "Fixed dates",
+        "easter": "Easter offsets",
+        "nth_weekday": "Nth weekday"
+      }
+    },
+    "anchor_kind": {
+      "options": {
+        "month": "Within a month",
+        "anchor": "Relative to a date"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
       }
     }
   }
