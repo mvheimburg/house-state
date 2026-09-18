@@ -71,7 +71,7 @@
       },
       "presence": {
         "title": "Arrival and departure",
-        "description": "Choose the entities that trigger arrival and departure. The grace period delays automatic departure.",
+        "description": "Choose the entities that trigger arrival and departure. The grace period delays automatic departure. The arrival delay waits after a lock or cover opens, so a guest visit reported a moment later (for example by a door panel) is not mistaken for the family arriving; 0 arrives at once.",
         "data": {
           "door_entities": "Arrival locks",
           "gate_entities": "Arrival covers",
@@ -79,6 +79,7 @@
           "auto_return": "Automatic arrival",
           "auto_away": "Automatic departure",
           "auto_away_grace": "Departure grace period (seconds)",
+          "arrival_delay": "Arrival delay after a lock or cover (seconds)",
           "back": "Return without changing this section"
         }
       },
@@ -396,6 +397,10 @@
         },
         "auto_away_grace": {
           "name": "Departure grace period",
+          "description": "See the README for the configuration schema."
+        },
+        "arrival_delay": {
+          "name": "Arrival delay",
           "description": "See the README for the configuration schema."
         },
         "night_schedule": {

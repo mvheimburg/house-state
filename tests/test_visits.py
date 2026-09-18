@@ -15,6 +15,8 @@ from .test_options_flow import choose, submit
 
 
 async def advance(hass, freezer, seconds):
+    # Let pending state changes schedule their timers before time moves.
+    await hass.async_block_till_done()
     freezer.tick(timedelta(seconds=seconds))
     async_fire_time_changed(hass, dt_util.utcnow())
     await hass.async_block_till_done()
@@ -94,8 +96,9 @@ async def test_visit_suppresses_door_and_gate_but_keeps_state_and_overlay(
     assert started["id"] == "req-1"
     assert dt_util.parse_datetime(started["expires"]) == dt_util.utcnow() + timedelta(hours=2)
     unlock(hass)
+    await advance(hass, freezer, 4)
     hass.states.async_set("cover.gate", "opening")
-    await hass.async_block_till_done()
+    await advance(hass, freezer, 4)
     assert hub(hass).state == "trip"
     assert hub(hass).attributes["overlay"] == "festive"
     assert hub(hass).attributes["visit"]["actor"] == "Kari"
@@ -112,13 +115,52 @@ async def test_visit_suppresses_door_and_gate_but_keeps_state_and_overlay(
     assert all(event["visit_id"] == "req-1" for event in suppressed)
 
 
-async def test_unlock_without_visit_still_arrives(hass, house, scenes):
+async def test_unlock_without_visit_still_arrives(hass, house, scenes, freezer):
     await setup(hass, house)
     await call(hass, state="out")
     unlock(hass)
     await hass.async_block_till_done()
+    assert hub(hass).state == "out"
+    await advance(hass, freezer, 4)
     assert hub(hass).state == "quiet"
     assert hub(hass).attributes["last_changed_by"] == "door"
+
+
+async def test_visit_reported_during_arrival_delay_suppresses_the_unlock(
+    hass, house, scenes, freezer
+):
+    """A KNX lock can report before the panel's MQTT event names the guest."""
+    events = []
+    hass.bus.async_listen("house_state_event", lambda event: events.append(event.data))
+    await setup(hass, house)
+    await call(hass, state="out")
+    unlock(hass)
+    await advance(hass, freezer, 1)
+    await visit(hass, visit_id="knx-guest")
+    await advance(hass, freezer, 3)
+    assert hub(hass).state == "out"
+    suppressed = next(event for event in events if event["type"] == "arrival_suppressed")
+    assert (suppressed["visit_id"], suppressed["source"]) == ("knx-guest", "lock.door")
+
+
+async def test_zero_arrival_delay_arrives_at_once(hass, house, scenes):
+    await setup(hass, house)
+    await call(hass, "set_config", arrival_delay=0)
+    await call(hass, state="out")
+    unlock(hass)
+    await hass.async_block_till_done()
+    assert hub(hass).state == "quiet"
+
+
+async def test_pending_arrival_is_cancelled_on_unload(hass, house, scenes, freezer):
+    await setup(hass, house)
+    await call(hass, state="out")
+    coordinator = house.runtime_data
+    unlock(hass)
+    await hass.async_block_till_done()
+    assert await hass.config_entries.async_unload(house.entry_id)
+    await advance(hass, freezer, 5)
+    assert coordinator.state == "out"
 
 
 async def test_family_arrival_ends_visit_without_cleanup(hass, house, scenes):
@@ -169,12 +211,12 @@ async def test_end_reapplies_unoccupied_scene_and_verifies_lock(hass, house, sce
     assert hub(hass).attributes["last_visit"]["cleanup"]["status"] == "ok"
     # The guest unlocking to walk out is still not an arrival...
     unlock(hass)
-    await hass.async_block_till_done()
+    await advance(hass, freezer, 4)
     assert hub(hass).state == "out"
     # ...but after the exit window a door is a family arrival again.
-    await advance(hass, freezer, 61)
+    await advance(hass, freezer, 57)
     unlock(hass)
-    await hass.async_block_till_done()
+    await advance(hass, freezer, 4)
     assert hub(hass).state == "quiet"
 
 

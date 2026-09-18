@@ -71,7 +71,7 @@
       },
       "presence": {
         "title": "Hjemkomst og avreise",
-        "description": "Velg entitetene som utløser hjemkomst og avreise. Ventetiden forsinker automatisk avreise.",
+        "description": "Velg entitetene som utløser hjemkomst og avreise. Ventetiden forsinker automatisk avreise. Forsinkelsen for hjemkomst venter etter at en lås eller port åpnes, slik at et gjestebesøk som meldes like etter (for eksempel fra et dørpanel) ikke tolkes som at familien kommer hjem; 0 gir hjemkomst med én gang.",
         "data": {
           "door_entities": "Låser for hjemkomst",
           "gate_entities": "Porter for hjemkomst",
@@ -79,6 +79,7 @@
           "auto_return": "Automatisk hjemkomst",
           "auto_away": "Automatisk avreise",
           "auto_away_grace": "Ventetid før avreise (sekunder)",
+          "arrival_delay": "Forsinkelse for hjemkomst etter lås eller port (sekunder)",
           "back": "Tilbake uten å endre denne delen"
         }
       },
@@ -396,6 +397,10 @@
         },
         "auto_away_grace": {
           "name": "Ventetid før avreise",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "arrival_delay": {
+          "name": "Forsinkelse for hjemkomst",
           "description": "Se README for feltformat og gyldige verdier."
         },
         "night_schedule": {

@@ -2,6 +2,7 @@
 
 import logging
 from datetime import timedelta
+from functools import partial
 
 from homeassistant.core import callback
 from homeassistant.helpers.event import (
@@ -24,6 +25,7 @@ class Triggers:
         self.config = coordinator.config
         self.unsubs = []
         self.away_cancel = None
+        self.arrival_cancel = None
         self.stopped = False
 
     def start(self):
@@ -71,6 +73,9 @@ class Triggers:
             unsub()
         self.unsubs.clear()
         self.cancel_away()
+        if self.arrival_cancel:
+            self.arrival_cancel()
+            self.arrival_cancel = None
 
     def cancel_away(self):
         if self.away_cancel:
@@ -160,20 +165,37 @@ class Triggers:
                 and new.state == "home"
             ):
                 reason = "presence"
+        if reason in {"door", "gate"} and (delay := self.config["arrival_delay"]):
+            # Whoever unlocked may report it a moment later (a panel over MQTT while
+            # the lock reports over KNX); give a guest visit the chance to start.
+            if self.arrival_cancel is None:
+                self.arrival_cancel = async_call_later(
+                    self.hass, delay, partial(self.delayed_arrival, reason, entity)
+                )
+        elif reason:
+            await self.arrive(reason, entity)
+        self.reconcile_away()
+
+    async def delayed_arrival(self, reason, entity, now):
+        self.arrival_cancel = None
+        await self.arrive(reason, entity)
+
+    async def arrive(self, reason, entity):
+        if self.stopped:
+            return
         if reason in {"door", "gate"} and self.coordinator.visits.suppressing():
             # A guest opened it; only configured people count as the family.
             visit = self.coordinator.visits.active or self.coordinator.visits.last
             self.coordinator.event(
                 "arrival_suppressed", reason=reason, source=entity, visit_id=visit["id"]
             )
-            reason = None
-        if reason and self.config["roles"].get("arrival"):
+            return
+        if self.config["roles"].get("arrival"):
             await self.safe_transition(
                 {"state": self.config["roles"]["arrival"]},
                 reason,
                 lambda: not self.coordinator.tree.occupied(self.coordinator.state),
             )
-        self.reconcile_away()
 
     async def depart(self, now):
         self.away_cancel = None

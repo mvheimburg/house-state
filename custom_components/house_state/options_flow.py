@@ -299,6 +299,7 @@ class HouseOptionsFlow(config_entries.OptionsFlow):
         fields[field("auto_away_grace", self._draft["auto_away_grace"])] = number(
             0, max(86400, self._draft["auto_away_grace"]), "s"
         )
+        fields[field("arrival_delay", self._draft["arrival_delay"])] = number(0, 60, "s")
         return self.form("presence", fields)
 
     async def async_step_visits(self, user_input=None):

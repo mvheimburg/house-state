@@ -113,6 +113,13 @@ set_config:
           max: 86400
           unit_of_measurement: s
           mode: box
+    arrival_delay:
+      selector:
+        number:
+          min: 0
+          max: 60
+          unit_of_measurement: s
+          mode: box
     night_schedule:
       selector:
         object: {}

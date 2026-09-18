@@ -44,6 +44,7 @@ DEFAULTS = {
     "auto_return": True,
     "auto_away": False,
     "auto_away_grace": 300,
+    "arrival_delay": 3,
     "night_schedule": {"type": "off"},
     "legacy_mirror": {},
     "visit_duration": 7200,

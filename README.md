@@ -150,6 +150,7 @@ data:
   auto_return: true
   auto_away: false
   auto_away_grace: 300
+  arrival_delay: 3
   night_schedule: {type: fixed, time: "22:00:00"}
   legacy_mirror: {}
   visit_duration: 7200
@@ -177,7 +178,13 @@ fixed local HA time `{type: fixed, time: "22:00:00"}`, or
 offset is signed seconds, within ±86400. HA location/timezone determines times.
 
 Door return requires locked/unlocking → unlocked. Gate return requires a known
-closed → opening/open transition. Person arrival selects the arrival role.
+closed → opening/open transition. Both wait `arrival_delay` seconds (default 3,
+at most 60; 0 arrives at once) before selecting the arrival role. Whoever
+unlocked may report it a moment after the lock does — for example a door panel
+announcing a guest over MQTT while the lock itself reports over KNX — and a
+guest visit that starts within the delay suppresses the arrival. Further lock or
+cover edges during the delay share the pending arrival. Person arrival selects
+the arrival role at once.
 Auto-away waits until all configured persons have known non-home states for the
 full grace period; unknown, unavailable or missing persons cancel that timer.
 The night schedule selects its role only while occupied and outside that role's
@@ -277,7 +284,7 @@ Configure → Guest visits**.
 | Situation | Behavior |
 |---|---|
 | A visit starts | State and overlay are unchanged; the visit timer starts |
-| A configured lock or cover opens during the visit | Not an arrival; `arrival_suppressed` is fired |
+| A configured lock or cover opens during the visit, or up to `arrival_delay` before it starts | Not an arrival; `arrival_suppressed` is fired |
 | The same, within the exit window after the visit | Not an arrival: that is the guest walking out |
 | A configured person comes home | Normal arrival; the visit ends with outcome `arrived` and no cleanup |
 | Any other change into an occupied state | The same: the family is home, so the visit is over |
@@ -405,7 +412,7 @@ ruff check custom_components tests
 ```
 
 Tests run against real Home Assistant 2026.2.3. CI checks tests, Ruff, manifest
-version parity, hassfest and HACS. Version `0.4.0` is synchronized in
+version parity, hassfest and HACS. Version `0.5.0` is synchronized in
 `pyproject.toml` and the manifest. Pushing a version bump to main runs CI and
 then creates `v<version>` plus a `house_state.zip` GitHub release. No release is
 created by local tests or commits.

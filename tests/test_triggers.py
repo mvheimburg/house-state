@@ -7,12 +7,14 @@ from .conftest import call, setup
 
 
 async def advance(hass, freezer, seconds):
+    # Let pending state changes schedule their timers before time moves.
+    await hass.async_block_till_done()
     freezer.tick(timedelta(seconds=seconds))
     async_fire_time_changed(hass, dt_util.utcnow())
     await hass.async_block_till_done()
 
 
-async def test_door_and_known_gate_edges(hass, entry, scenes):
+async def test_door_and_known_gate_edges(hass, entry, scenes, freezer):
     hass.config_entries.async_update_entry(
         entry,
         options=dict(entry.options)
@@ -26,12 +28,14 @@ async def test_door_and_known_gate_edges(hass, entry, scenes):
     hass.states.async_set("cover.gate", "closed")
     hass.states.async_set("cover.gate", "opening")
     await hass.async_block_till_done()
+    assert hass.states.get("sensor.house_state").state == "out"
+    await advance(hass, freezer, 4)
     assert hass.states.get("sensor.house_state").state == "quiet"
     assert hass.states.get("sensor.house_state").attributes["last_changed_by"] == "gate"
     await call(hass, state="trip")
     hass.states.async_set("lock.door", "locked")
     hass.states.async_set("lock.door", "unlocked")
-    await hass.async_block_till_done()
+    await advance(hass, freezer, 4)
     assert hass.states.get("sensor.house_state").attributes["last_changed_by"] == "door"
     assert hass.states.get("sensor.house_state").state == "quiet"
 

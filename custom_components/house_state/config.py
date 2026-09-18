@@ -180,6 +180,7 @@ def validate_config(hass, values, *, check_scenes=True):
             ("visit_duration", MIN_DURATION, MAX_DURATION),
             ("visit_max_duration", MIN_DURATION, MAX_DURATION),
             ("visit_exit_grace", 0, 3600),
+            ("arrival_delay", 0, 60),
         ):
             config[key] = vol.All(vol.Coerce(int), vol.Range(min=low, max=high))(config[key])
         if config["visit_duration"] > config["visit_max_duration"]:

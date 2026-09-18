@@ -37,6 +37,7 @@ async def async_setup(hass, config):
             vol.Optional("auto_return"): cv.boolean,
             vol.Optional("auto_away"): cv.boolean,
             vol.Optional("auto_away_grace"): vol.All(vol.Coerce(int), vol.Range(min=0)),
+            vol.Optional("arrival_delay"): vol.Coerce(int),
             vol.Optional("night_schedule"): dict,
             vol.Optional("legacy_mirror"): dict,
             vol.Optional("visit_duration"): vol.Coerce(int),
