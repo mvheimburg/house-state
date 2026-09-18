@@ -16,6 +16,7 @@ from . import rules
 from .config import scene_warnings, validate_config
 from .const import DOMAIN, RESERVED_OVERLAYS
 from .model import Rejected, StateTree
+from .visits import Visits
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class HouseCoordinator:
         self.lock = asyncio.Lock()
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}")
         self.triggers = None
+        self.visits = Visits(self)
         self.start_unsub = None
         self.reconciled_previous = None
         self.skip_start_retry = hass.data.pop((DOMAIN, entry.entry_id, "options_reload"), False)
@@ -78,6 +80,7 @@ class HouseCoordinator:
         self.reason = "service" if normalized else data.get("reason", "service")
         self.last_pair = data.get("last_pair")
         self.pending = data.get("pending", False)
+        self.visits.load(data)
         # Persist the scene-defining configuration to distinguish startup replay
         # from a config edit, including edits made while HA was stopped.
         changed_config = data.get("selection_config") != self.selection_config
@@ -112,6 +115,7 @@ class HouseCoordinator:
                 "desired_pair": [
                     self.tree.resolve(self.state, self.overlay)[index] for index in (0, 2)
                 ],
+                **self.visits.data(),
             }
         )
 
@@ -167,6 +171,10 @@ class HouseCoordinator:
                 self.reason,
                 self.pending,
             )
+            visits = self.visits.snapshot()
+            arrived = not occupied_before and self.tree.occupied(state)
+            # Family arriving ends a visit in the same save; there is nothing to clean up.
+            ended_visit = self.visits.arrived() if changed and arrived else None
             if changed:
                 self.state, self.overlay = state, overlay
                 self.since, self.reason = dt_util.utcnow().isoformat(), reason
@@ -191,7 +199,10 @@ class HouseCoordinator:
                     self.reason,
                     self.pending,
                 ) = rollback
+                self.visits.restore(visits)
                 raise
+            if ended_visit:
+                self.visits.cancel_timer()
             self.notify()
             if changed:
                 self.event(
@@ -206,6 +217,8 @@ class HouseCoordinator:
                     self.event(
                         "arrived" if self.tree.occupied(state) else "departed", reason=reason
                     )
+                if ended_visit:
+                    self.event("visit_ended", **self.visits.summary(ended_visit))
                 if previous["overlay"] != overlay:
                     self.event("overlay_changed", overlay=overlay, previous=previous["overlay"])
                 if self.triggers:
@@ -351,6 +364,8 @@ class HouseCoordinator:
 
     async def started(self, event=None):
         self.start_unsub = None
+        # Scenes and locks exist now; a visit that expired while stopped ends here.
+        self.visits.schedule()
         try:
             await self.evaluate(refresh_calendars=True)
         except Exception:
@@ -368,6 +383,7 @@ class HouseCoordinator:
             )
 
     def stop(self):
+        self.visits.stop()
         if self.triggers:
             self.triggers.stop()
         if self.start_unsub:
@@ -405,4 +421,6 @@ class HouseCoordinator:
             "auto_return_enabled": self.config["auto_return"],
             "night_schedule": self.config["night_schedule"],
             "available_overlays": ["none", *self.tree.overlays],
+            "visit": deepcopy(self.visits.active),
+            "last_visit": deepcopy(self.visits.last),
         }

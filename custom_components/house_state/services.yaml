@@ -119,3 +119,59 @@ set_config:
     legacy_mirror:
       selector:
         object: {}
+    visit_duration:
+      selector:
+        number:
+          min: 60
+          max: 604800
+          unit_of_measurement: s
+          mode: box
+    visit_max_duration:
+      selector:
+        number:
+          min: 60
+          max: 604800
+          unit_of_measurement: s
+          mode: box
+    visit_exit_grace:
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: s
+          mode: box
+    visit_reapply_scene:
+      selector:
+        boolean: {}
+    visit_lock_entities:
+      selector:
+        entity:
+          domain: lock
+          multiple: true
+visit_start:
+  target:
+    entity:
+      integration: house_state
+      domain: sensor
+  fields:
+    visit_id:
+      selector:
+        text: {}
+    duration:
+      selector:
+        duration: {}
+    source:
+      selector:
+        text: {}
+    actor:
+      selector:
+        text: {}
+visit_end:
+  target:
+    entity:
+      integration: house_state
+      domain: sensor
+  fields:
+    visit_id:
+      selector:
+        text: {}

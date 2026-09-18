@@ -24,7 +24,7 @@ class HouseEntity(Entity):
     @property
     def suggested_object_id(self):
         # Keep the documented hub/overlay IDs independent of UI language.
-        if self.key in {"state", "overlay", "occupied", "state_select"}:
+        if self.key in {"state", "overlay", "occupied", "visit", "state_select"}:
             return "state" if self.key == "state_select" else self.key
         return super().suggested_object_id
 

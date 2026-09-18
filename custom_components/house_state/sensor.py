@@ -47,3 +47,12 @@ class HouseSensor(HouseEntity, SensorEntity):
 
     async def async_set_config(self, **changes):
         await self.coordinator.set_config(changes)
+
+    async def async_visit_start(self, visit_id=None, duration=None, source="service", actor=None):
+        # The HA user is supporting evidence; the caller's own authentication
+        # decides who the actor is and that this is a guest admission.
+        user_id = self._context.user_id if self._context else None
+        return await self.coordinator.visits.start(visit_id, duration, source, actor, user_id)
+
+    async def async_visit_end(self, visit_id=None):
+        return await self.coordinator.visits.end(visit_id)

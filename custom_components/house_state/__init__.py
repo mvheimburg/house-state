@@ -1,11 +1,15 @@
 """House State integration."""
 
 import voluptuous as vol
+from homeassistant.core import SupportsResponse
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service import async_register_platform_entity_service
 
 from .const import DOMAIN, PLATFORMS, REASONS
 from .coordinator import HouseCoordinator
+
+# Caller-chosen, so a retried request is recognized; a UUID fits.
+_VISIT_ID = vol.All(str, vol.Match(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$"))
 
 
 async def async_setup(hass, config):
@@ -35,11 +39,31 @@ async def async_setup(hass, config):
             vol.Optional("auto_away_grace"): vol.All(vol.Coerce(int), vol.Range(min=0)),
             vol.Optional("night_schedule"): dict,
             vol.Optional("legacy_mirror"): dict,
+            vol.Optional("visit_duration"): vol.Coerce(int),
+            vol.Optional("visit_max_duration"): vol.Coerce(int),
+            vol.Optional("visit_exit_grace"): vol.Coerce(int),
+            vol.Optional("visit_reapply_scene"): cv.boolean,
+            vol.Optional("visit_lock_entities"): cv.entity_ids,
         },
+        "visit_start": {
+            vol.Optional("visit_id"): _VISIT_ID,
+            vol.Optional("duration"): cv.positive_time_period,
+            vol.Optional("source", default="service"): vol.All(str, vol.Length(min=1, max=64)),
+            vol.Optional("actor"): vol.All(str, vol.Length(min=1, max=100)),
+        },
+        "visit_end": {vol.Optional("visit_id"): _VISIT_ID},
     }
     for name, schema in services.items():
         async_register_platform_entity_service(
-            hass, DOMAIN, name, entity_domain="sensor", schema=schema, func=f"async_{name}"
+            hass,
+            DOMAIN,
+            name,
+            entity_domain="sensor",
+            schema=schema,
+            func=f"async_{name}",
+            supports_response=(
+                SupportsResponse.OPTIONAL if name.startswith("visit_") else SupportsResponse.NONE
+            ),
         )
     return True
 

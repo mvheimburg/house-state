@@ -7,7 +7,7 @@ import voluptuous as vol
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
-from .const import DEFAULTS, RESERVED_OVERLAYS, ROLE_KEYS
+from .const import DEFAULTS, MAX_DURATION, MIN_DURATION, RESERVED_OVERLAYS, ROLE_KEYS
 from .model import StateTree
 from .rules import WEEKDAYS, valid_mmdd
 
@@ -166,15 +166,24 @@ def validate_config(hass, values, *, check_scenes=True):
             ("door_entities", "lock"),
             ("gate_entities", "cover"),
             ("person_entities", "person"),
+            ("visit_lock_entities", "lock"),
         ):
             config[key] = cv.entity_ids(config[key])
             if any(not entity.startswith(domain + ".") for entity in config[key]):
                 raise vol.Invalid(f"{key} requires {domain} entities")
-        for key in ("auto_return", "auto_away"):
+        for key in ("auto_return", "auto_away", "visit_reapply_scene"):
             config[key] = cv.boolean(config[key])
         config["auto_away_grace"] = vol.All(vol.Coerce(int), vol.Range(min=0))(
             config["auto_away_grace"]
         )
+        for key, low, high in (
+            ("visit_duration", MIN_DURATION, MAX_DURATION),
+            ("visit_max_duration", MIN_DURATION, MAX_DURATION),
+            ("visit_exit_grace", 0, 3600),
+        ):
+            config[key] = vol.All(vol.Coerce(int), vol.Range(min=low, max=high))(config[key])
+        if config["visit_duration"] > config["visit_max_duration"]:
+            raise vol.Invalid("Default visit duration exceeds the maximum")
         schedule = config["night_schedule"]
         kind = schedule.get("type", "off")
         allowed = {"off": {"type"}, "fixed": {"type", "time"}, "sun": {"type", "event", "offset"}}

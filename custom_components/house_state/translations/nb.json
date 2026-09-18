@@ -40,6 +40,7 @@
           "general": "Starttilstand og roller",
           "overlays": "Overlegg",
           "presence": "Hjemkomst og avreise",
+          "visits": "Gjestebesøk",
           "night": "Nattplan",
           "legacy": "Gamle hjelpeentiteter",
           "save": "Lagre alle endringer",
@@ -78,6 +79,18 @@
           "auto_return": "Automatisk hjemkomst",
           "auto_away": "Automatisk avreise",
           "auto_away_grace": "Ventetid før avreise (sekunder)",
+          "back": "Tilbake uten å endre denne delen"
+        }
+      },
+      "visits": {
+        "title": "Gjestebesøk",
+        "description": "Et gjestebesøk holder huset i ubebodd tilstand mens en gjest er inne: hjemkomst fra lås og port ignoreres under besøket og i utgangsvinduet etterpå. Hjemkomst fra valgte personer teller fortsatt og avslutter besøket. Når et besøk avsluttes mens ingen er hjemme, kan scenen brukes på nytt og valgte låser låses; hver lås må bekrefte at den er låst.",
+        "data": {
+          "visit_duration": "Standard besøkslengde (minutter)",
+          "visit_max_duration": "Lengste tillatte besøk (minutter)",
+          "visit_exit_grace": "Utgangsvindu etter besøk (sekunder)",
+          "visit_reapply_scene": "Bruk scenen på nytt når besøket avsluttes",
+          "visit_lock_entities": "Låser som låses når besøket avsluttes",
           "back": "Tilbake uten å endre denne delen"
         }
       },
@@ -278,6 +291,9 @@
     "binary_sensor": {
       "occupied": {
         "name": "Noen hjemme"
+      },
+      "visit": {
+        "name": "Gjestebesøk"
       }
     }
   },
@@ -389,6 +405,58 @@
         "legacy_mirror": {
           "name": "Gamle hjelpeentiteter",
           "description": "Se README for feltformat og gyldige verdier."
+        },
+        "visit_duration": {
+          "name": "Standard besøkslengde",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "visit_max_duration": {
+          "name": "Lengste tillatte besøk",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "visit_exit_grace": {
+          "name": "Utgangsvindu etter besøk",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "visit_reapply_scene": {
+          "name": "Bruk scenen på nytt når besøket avsluttes",
+          "description": "Se README for feltformat og gyldige verdier."
+        },
+        "visit_lock_entities": {
+          "name": "Låser som låses når besøket avsluttes",
+          "description": "Se README for feltformat og gyldige verdier."
+        }
+      }
+    },
+    "visit_start": {
+      "name": "Start gjestebesøk",
+      "description": "Registrer et gjestebesøk før døren låses opp for en gjest. Huset beholder tilstand og overlegg; hjemkomst fra lås og port ignoreres til besøket avsluttes.",
+      "fields": {
+        "visit_id": {
+          "name": "Besøks-ID",
+          "description": "Valgfri ID fra avsender, for eksempel en forespørsels-UUID. Samme aktive ID gir samme besøk uendret."
+        },
+        "duration": {
+          "name": "Varighet",
+          "description": "Valgfri lengde; standard er konfigurert besøkslengde, begrenset av lengste tillatte besøk."
+        },
+        "source": {
+          "name": "Kilde",
+          "description": "Systemet som registrerte besøket, for eksempel doormonitor eller guest_dashboard."
+        },
+        "actor": {
+          "name": "Aktør",
+          "description": "Hvem som ba om besøket, slik kilden har autentisert det."
+        }
+      }
+    },
+    "visit_end": {
+      "name": "Avslutt gjestebesøk",
+      "description": "Avslutt besøket og, hvis ingen er hjemme, bruk scenen på nytt og lås valgte låser. Returnerer resultatet av oppryddingen.",
+      "fields": {
+        "visit_id": {
+          "name": "Besøks-ID",
+          "description": "Avslutt bare dette besøket. En ID som ikke lenger er aktiv endrer ingenting."
         }
       }
     }

@@ -9,7 +9,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import selector
 
 from .config import _NODE, _overlay_rule, scene_warnings, validate_config
-from .const import DEFAULTS, RESERVED_OVERLAYS, ROLE_KEYS
+from .const import DEFAULTS, MAX_DURATION, RESERVED_OVERLAYS, ROLE_KEYS
 from .rules import WEEKDAYS
 
 
@@ -98,6 +98,7 @@ class HouseOptionsFlow(config_entries.OptionsFlow):
                 "general",
                 "overlays",
                 "presence",
+                "visits",
                 "night",
                 "legacy",
                 "save",
@@ -299,6 +300,30 @@ class HouseOptionsFlow(config_entries.OptionsFlow):
             0, max(86400, self._draft["auto_away_grace"]), "s"
         )
         return self.form("presence", fields)
+
+    async def async_step_visits(self, user_input=None):
+        # Stored in seconds; minutes are what a household thinks in.
+        minutes = ("visit_duration", "visit_max_duration")
+        if user_input is not None:
+            if not user_input.get("back"):
+                for key in minutes:
+                    self._draft[key] = int(user_input[key]) * 60
+                self._draft["visit_exit_grace"] = int(user_input["visit_exit_grace"])
+                self._draft["visit_reapply_scene"] = user_input["visit_reapply_scene"]
+                self._draft["visit_lock_entities"] = user_input["visit_lock_entities"]
+            return await self.async_step_init()
+        fields = {
+            field(key, self._draft[key] // 60): number(1, MAX_DURATION // 60, "min")
+            for key in minutes
+        }
+        fields[field("visit_exit_grace", self._draft["visit_exit_grace"])] = number(0, 3600, "s")
+        fields[field("visit_reapply_scene", self._draft["visit_reapply_scene"])] = (
+            selector.BooleanSelector()
+        )
+        fields[field("visit_lock_entities", self._draft["visit_lock_entities"])] = entity(
+            "lock", multiple=True
+        )
+        return self.form("visits", fields)
 
     async def async_step_legacy(self, user_input=None):
         if user_input is not None:

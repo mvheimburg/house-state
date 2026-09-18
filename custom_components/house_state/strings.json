@@ -40,6 +40,7 @@
           "general": "Initial state and roles",
           "overlays": "Overlays",
           "presence": "Arrival and departure",
+          "visits": "Guest visits",
           "night": "Night schedule",
           "legacy": "Legacy helpers",
           "save": "Save all changes",
@@ -78,6 +79,18 @@
           "auto_return": "Automatic arrival",
           "auto_away": "Automatic departure",
           "auto_away_grace": "Departure grace period (seconds)",
+          "back": "Return without changing this section"
+        }
+      },
+      "visits": {
+        "title": "Guest visits",
+        "description": "A guest visit keeps the house in its unoccupied state while a guest is inside: lock and cover arrivals are ignored during the visit and the exit window after it. Configured people arriving still count as arrival and end the visit. When a visit ends while nobody is home, the unoccupied scene can be reapplied and the chosen locks locked; each lock must report locked.",
+        "data": {
+          "visit_duration": "Default visit length (minutes)",
+          "visit_max_duration": "Longest allowed visit (minutes)",
+          "visit_exit_grace": "Exit window after a visit (seconds)",
+          "visit_reapply_scene": "Reapply the scene when a visit ends",
+          "visit_lock_entities": "Locks to lock when a visit ends",
           "back": "Return without changing this section"
         }
       },
@@ -278,6 +291,9 @@
     "binary_sensor": {
       "occupied": {
         "name": "Occupied"
+      },
+      "visit": {
+        "name": "Guest visit"
       }
     }
   },
@@ -389,6 +405,58 @@
         "legacy_mirror": {
           "name": "Legacy helpers",
           "description": "See the README for the configuration schema."
+        },
+        "visit_duration": {
+          "name": "Default visit length",
+          "description": "See the README for the configuration schema."
+        },
+        "visit_max_duration": {
+          "name": "Longest allowed visit",
+          "description": "See the README for the configuration schema."
+        },
+        "visit_exit_grace": {
+          "name": "Exit window after a visit",
+          "description": "See the README for the configuration schema."
+        },
+        "visit_reapply_scene": {
+          "name": "Reapply the scene when a visit ends",
+          "description": "See the README for the configuration schema."
+        },
+        "visit_lock_entities": {
+          "name": "Locks to lock when a visit ends",
+          "description": "See the README for the configuration schema."
+        }
+      }
+    },
+    "visit_start": {
+      "name": "Start guest visit",
+      "description": "Register a guest visit before unlocking for a guest. The house keeps its state and overlay; lock and cover arrivals are ignored until the visit ends.",
+      "fields": {
+        "visit_id": {
+          "name": "Visit ID",
+          "description": "Optional caller-chosen ID, for example a request UUID. Repeating an active ID returns that visit unchanged."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Optional length; defaults to the configured visit length and is limited by the longest allowed visit."
+        },
+        "source": {
+          "name": "Source",
+          "description": "The system that registered the visit, for example doormonitor or guest_dashboard."
+        },
+        "actor": {
+          "name": "Actor",
+          "description": "Who requested the visit, as authenticated by the source."
+        }
+      }
+    },
+    "visit_end": {
+      "name": "End guest visit",
+      "description": "End the visit and, if nobody is home, reapply the scene and lock the configured locks. Returns the cleanup result.",
+      "fields": {
+        "visit_id": {
+          "name": "Visit ID",
+          "description": "End only this visit. An ID that is no longer active changes nothing."
         }
       }
     }

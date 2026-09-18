@@ -27,7 +27,8 @@ children and deeper levels; move or rename nodes; assign a scene at any level.
 Open **Settings → Devices & services → House State → Configure**. Structured
 menus and forms let you edit states, parent/default-child relationships, scenes,
 occupancy, initial state and roles; overlays and their activation rules; trigger
-entities and automatic arrival/departure; night schedules; and legacy mirrors.
+entities and automatic arrival/departure; guest visits; night schedules; and
+legacy mirrors.
 The `house_state.set_config` action remains available for automations.
 
 Edits stay in a draft until you choose **Save** and submit its confirmation.
@@ -71,6 +72,7 @@ For an entry named House, defaults are:
 | `select.house_home`, `select.house_day` | Direct children of each configured parent |
 | `select.house_overlay` | `none` plus configured overlay IDs, and `auto` where rules exist |
 | `binary_sensor.house_occupied` | Inherited occupancy |
+| `binary_sensor.house_visit` | On while a guest visit is active; attributes describe the active or last visit |
 
 Branch selects are unavailable while their parent is not on the active path.
 Every node with children gets a select. Entity IDs derive from configured names
@@ -81,7 +83,8 @@ The hub attributes are `state`, `active_path` (root to leaf IDs), `state_tree`,
 `overlays`, `overlay`, `overlay_choice`, `overlay_rule`, `overlay_hold_until`,
 `scene_stale`, `occupied`, `last_scene`, `last_changed_by`, `since`,
 `previous_state`, `application_pending`, `scene_warnings`, `config`,
-`auto_return_enabled`, `night_schedule`, and `available_overlays`.
+`auto_return_enabled`, `night_schedule`, `available_overlays`, `visit` (the
+active visit or null) and `last_visit`.
 
 ## Actions
 
@@ -105,6 +108,8 @@ data:
 | `house_state.depart` | `vacation` (false), optional `reason` |
 | `house_state.apply_scene` | `force` (true) |
 | `house_state.set_config` | Any configuration fields below |
+| `house_state.visit_start` | optional `visit_id`, `duration`, `source`, `actor`; returns the visit |
+| `house_state.visit_end` | optional `visit_id`; returns the outcome and cleanup result |
 
 Reasons are `user`, `door`, `gate`, `presence`, `schedule`, `service` (default).
 Explicit arrive/depart actions reject a disabled role. Automated triggers ignore
@@ -147,6 +152,11 @@ data:
   auto_away_grace: 300
   night_schedule: {type: fixed, time: "22:00:00"}
   legacy_mirror: {}
+  visit_duration: 7200
+  visit_max_duration: 43200
+  visit_exit_grace: 120
+  visit_reapply_scene: true
+  visit_lock_entities: [lock.front_door]
 ```
 
 IDs match `[a-z][a-z0-9_]*` with at most 64 characters. Names are nonempty and
@@ -173,6 +183,11 @@ full grace period; unknown, unavailable or missing persons cancel that timer.
 The night schedule selects its role only while occupied and outside that role's
 subtree. Grace timers and listeners are canceled on unload/options changes; a
 new grace period starts after reload if everyone is still away.
+
+Visit settings are in seconds: `visit_duration` (default 7200) and
+`visit_max_duration` (43200) lie between 60 and 604800, and the default cannot
+exceed the maximum; `visit_exit_grace` (120) lies between 0 and 3600. The
+Configure form shows visit lengths in minutes.
 
 ## Date-driven overlays
 
@@ -251,6 +266,94 @@ so `when_state` and `when_occupied` resolve together with the state change
 rather than costing a second scene application. A calendar that cannot be read
 keeps the previous answer and logs a warning instead of flapping an overlay off.
 
+## Guest visits
+
+A guest visit lets someone into an empty house without the house deciding
+that the family came home. The visit sits beside the state and overlay: the
+house stays in Away or Vacation, with Christmas still active, while a cat-sitter
+is inside. Configure it under **Settings → Devices & services → House State →
+Configure → Guest visits**.
+
+| Situation | Behavior |
+|---|---|
+| A visit starts | State and overlay are unchanged; the visit timer starts |
+| A configured lock or cover opens during the visit | Not an arrival; `arrival_suppressed` is fired |
+| The same, within the exit window after the visit | Not an arrival: that is the guest walking out |
+| A configured person comes home | Normal arrival; the visit ends with outcome `arrived` and no cleanup |
+| Any other change into an occupied state | The same: the family is home, so the visit is over |
+| The visit ends or expires while nobody is home | Cleanup: reapply the scene, then lock and verify the configured locks |
+| The visit ends or expires while someone is home | Cleanup is skipped |
+| A lock or cover opens with no visit | Today's automatic arrival, unchanged |
+
+Only one visit is active. Starting another supersedes it (outcome
+`superseded`, no cleanup), so an earlier guest's link or timer can no longer end
+the newer visit. The visit and its expiry are stored; after a restart the timer
+resumes, and a visit that expired while Home Assistant was stopped ends, with
+its cleanup, once Home Assistant has started.
+
+**Cleanup reports what happened; it does not assume it.** The scene result is
+`applied`, `skipped` (someone arrived meanwhile), `failed` or `disabled`. Each
+lock reports `locked` only after its state is `locked`, waiting up to 30
+seconds after the lock accepts the command. Otherwise it reports `unverified`,
+`jammed`, `failed` (the command was refused) or `unavailable`, or `skipped` if
+someone arrived meanwhile. Any failure makes the cleanup `status` `failed`,
+logs a warning, and is published in `last_visit` and the `visit_ended` event.
+
+### Starting and ending a visit
+
+```yaml
+action: house_state.visit_start
+target:
+  entity_id: sensor.house_state
+data:
+  visit_id: 3f0c9d6e-7a41-4d8e-9a1b-2c5e8f7d6a10
+  duration: {hours: 2}
+  source: doormonitor
+  actor: Cat sitter (guest link)
+response_variable: visit
+```
+
+The response holds `status` (`started`, or `active` when the same `visit_id` is
+already running, which leaves its expiry unchanged), `id`, `started`, `expires`,
+`source`, `actor`, and the Home Assistant `user_id` and `user_name` of the
+caller when known. Without `visit_id` an ID is generated. Reusing the ID of a
+visit that has ended is rejected. `duration` defaults to `visit_duration` and
+must be between 60 seconds and `visit_max_duration`.
+
+`house_state.visit_end` with the visit's `visit_id` returns `status: ended`, the
+`outcome` and the `cleanup` result. If that visit is no longer active (it
+expired, was superseded, or the family arrived), it returns `status:
+not_active` with its `last` record and changes nothing. Without `visit_id` it
+ends whichever visit is active, which is meant for residents and automations.
+
+### Callers: DoorMonitor and the guest dashboard
+
+The caller authenticates the person and decides intent. House State decides
+what a visit does to the house. For a guest admission, in this order:
+
+1. Authenticate the requester and decide the purpose from their access, not
+   from anything the browser sends. A shared kiosk identifies the kiosk only;
+   identify the person with a PIN, guest link or similar.
+2. Call `visit_start` with a request-unique `visit_id` and **wait for it to
+   succeed**. Do not unlock if it fails.
+3. Unlock the door.
+4. Record the unlock result against the visit ID.
+
+Registering first means that when House State sees the unlock, arrival
+suppression is already in place. A resident using a guest action
+(«Slipp inn gjest») is still a guest admission: pass the resident as `actor`.
+A resident arriving home («Jeg kommer hjem») must not start a visit. During a
+visit a lock opening is not an arrival, so that resident action should call
+`house_state.arrive`.
+
+«Jeg går nå» calls `visit_end` with the same `visit_id` and shows the returned
+cleanup result. Configured locks are locked at that moment, so the guest should
+press it after closing the door. Unlocking from inside within the exit window
+is not an arrival, but it leaves the door unlocked.
+
+Home Assistant's `context.user_id` is recorded as supporting detail only. It is
+empty for many callers and is not what identifies a guest.
+
 ## Persistence and events
 
 Desired state, overlay, timestamp and a pending marker are saved before scenes
@@ -264,7 +367,10 @@ manual application to you; name changes retain genuine failed-scene pending.
 The `house_state_event` bus event includes `entity_id` and `type`: `changed`
 (state, active_path, overlay, previous, reason), `arrived`/`departed` (occupied
 boundary, reason), `overlay_changed`, `rejected` (field/value/because), and
-`scene_applied` (scene, resolved_from node ID, overlay_scene).
+`scene_applied` (scene, resolved_from node ID, overlay_scene), `visit_started`
+and `visit_ended` (visit_id, source, actor, user_id, expires; `visit_ended`
+adds outcome `ended`/`expired`/`arrived`/`superseded` and cleanup), and
+`arrival_suppressed` (reason `door`/`gate`, source entity, visit_id).
 
 ## Migration from helpers and scene automations
 
@@ -299,7 +405,7 @@ ruff check custom_components tests
 ```
 
 Tests run against real Home Assistant 2026.2.3. CI checks tests, Ruff, manifest
-version parity, hassfest and HACS. Version `0.3.0` is synchronized in
+version parity, hassfest and HACS. Version `0.4.0` is synchronized in
 `pyproject.toml` and the manifest. Pushing a version bump to main runs CI and
 then creates `v<version>` plus a `house_state.zip` GitHub release. No release is
 created by local tests or commits.

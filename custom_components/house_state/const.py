@@ -6,6 +6,8 @@ ROLE_KEYS = ["arrival", "departure", "vacation", "night"]
 REASONS = ["user", "door", "gate", "presence", "schedule", "service"]
 # Overlay axis sentinels: auto follows the configured rules, none suppresses them.
 RESERVED_OVERLAYS = {"none", "auto"}
+# Visit durations in seconds: at least a minute, at most a week.
+MIN_DURATION, MAX_DURATION = 60, 604800
 
 
 def _node(id, name, parent=None, default_child=None, occupied=None):
@@ -44,4 +46,9 @@ DEFAULTS = {
     "auto_away_grace": 300,
     "night_schedule": {"type": "off"},
     "legacy_mirror": {},
+    "visit_duration": 7200,
+    "visit_max_duration": 43200,
+    "visit_exit_grace": 120,
+    "visit_reapply_scene": True,
+    "visit_lock_entities": [],
 }

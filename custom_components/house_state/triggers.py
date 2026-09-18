@@ -160,6 +160,13 @@ class Triggers:
                 and new.state == "home"
             ):
                 reason = "presence"
+        if reason in {"door", "gate"} and self.coordinator.visits.suppressing():
+            # A guest opened it; only configured people count as the family.
+            visit = self.coordinator.visits.active or self.coordinator.visits.last
+            self.coordinator.event(
+                "arrival_suppressed", reason=reason, source=entity, visit_id=visit["id"]
+            )
+            reason = None
         if reason and self.config["roles"].get("arrival"):
             await self.safe_transition(
                 {"state": self.config["roles"]["arrival"]},

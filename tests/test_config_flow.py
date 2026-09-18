@@ -91,6 +91,8 @@ async def test_service_metadata_loads_for_all_public_actions(hass, entry, scenes
         "depart",
         "apply_scene",
         "set_config",
+        "visit_start",
+        "visit_end",
     }
     assert set(descriptions["house_state"]["set_config"]["fields"]) == set(
         hass.states.get("sensor.house_state").attributes["config"]
