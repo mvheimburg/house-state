@@ -378,12 +378,16 @@ valves, where on means water flows).
 
 House State operates the valves only when the water it wants changes. A restart,
 reload or settings change never opens or closes them, and the first start
-adopts whatever the valves are doing. A valve that something else closed, such
-as a leak automation, stays closed until House State itself next needs the
-water on: a guest arriving during vacation, or the return from vacation. Keep
-leak protection in its own automation that closes the valve again if needed.
-Valves you add while on vacation are closed at the next change, not when you
-save.
+adopts whatever the valves are doing. A valve that something else closed stays
+closed until House State itself next needs the water on: a guest arriving
+during vacation, or the return from vacation. Valves you add while on vacation
+are closed at the next change, not when you save.
+
+House State has no leak protection of its own. Leave that to the valve or to a
+dedicated integration. To keep House State from reopening the water after a
+leak, point `water_valves` at a valve that refuses to open while the leak is
+active. House State then reports that valve as `failed`, and keeps the water
+off.
 
 Each valve counts as done only when it reports the state it was sent to
 (`closed`/`open`, or `off`/`on` for a switch), within 30 seconds. The result is

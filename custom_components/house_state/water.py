@@ -2,8 +2,8 @@
 
 House State acts only when the water it wants changes, or to retry a failed
 attempt. It never reopens valves because of a restart or a settings change, so
-a valve something else closed (a leak automation) stays closed until House
-State itself needs it open.
+a valve something else closed stays closed until House State itself needs
+it open. Leak protection is not House State's job.
 """
 
 import asyncio
