@@ -63,6 +63,45 @@ if needed. Removing the active node selects the initial state and follows its
 defaults; removing the active overlay selects `none`. Node renames preserve the
 active ID and timestamp. Native branch selects are added/removed automatically.
 
+## Configuration panel
+
+Administrators get a **House State** page in the sidebar that shows the whole
+configuration at once and edits it in place. It is an alternative to the
+step-by-step **Configure** flow, which still works. Both save the same
+settings.
+
+![States tab: the tree with start, default and role badges, and the editor for one state](docs/panel-states.png)
+
+- **States** shows the tree with indentation. Each state shows whether someone
+  is home (set on the state or inherited), its scene or where the scene comes
+  from, and badges for the start state, default children and roles. Select a
+  state to change its name, parent, default child, scene and occupancy, or to
+  add a child. **Roles** sets the start state and the arrival, departure,
+  vacation and night targets, and warns when a target leads to the wrong
+  occupancy. Deleting a state first lists everything it changes: children move
+  up, defaults and roles are cleared, and overlays stop listing the state. It
+  refuses when an overlay would lose its only allowed state.
+- **Overlays** lists every overlay with its rule written out, for example
+  "Every year Dec 1 → Dec 26", "Easter −2 to +1 days" or "2nd Sunday in May for
+  1 day". The editor covers the scene, priority, manual, calendar or date
+  activation, and the occupancy and state conditions.
+- **Presence & arrival**, **Night**, **Visits**, **Water** and **Advanced**
+  (legacy input_select mirrors) hold the remaining settings. Durations are
+  entered in hours, minutes or seconds as they suit. The night offset is set in
+  minutes before or after sunset or sunrise.
+
+![Overlays tab in a dark theme, editing a fixed-date rule](docs/panel-overlays.png)
+
+Changes stay in a draft until **Save**. **Discard** returns to the saved
+settings. Obvious problems show up next to their field while you edit; on Save,
+the integration validates the whole draft and shows any error. Missing scenes or
+scene members open a confirmation that lists them before anything is stored. If
+the settings changed elsewhere in the meantime, the page offers to reload them
+rather than overwrite that change. Saving reloads House State and never applies
+scenes. IDs can be edited only on new states and overlays before their first
+save. The page follows Home Assistant's language (English or Norwegian Bokmål)
+and theme, and switches to a single column on phones.
+
 ## Entities
 
 For an entry named House, defaults are:
@@ -457,3 +496,20 @@ version parity, hassfest and HACS. Version `0.5.0` is synchronized in
 `pyproject.toml` and the manifest. Pushing a version bump to main runs CI and
 then creates `v<version>` plus a `house_state.zip` GitHub release. No release is
 created by local tests or commits.
+
+### Frontend development
+
+The panel's source lives in `frontend/` (Lit and TypeScript). Its tests run in
+Chromium through Vitest browser mode. The built bundle,
+`custom_components/house_state/frontend/house-state-panel.js`, is committed
+because the integration serves it directly. Rebuild the bundle whenever you
+change the source:
+
+```sh
+cd frontend
+npm ci
+npx playwright install chromium   # first time only
+npm test
+npm run lint && npm run typecheck
+npm run build
+```

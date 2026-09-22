@@ -34,7 +34,7 @@
     "step": {
       "init": {
         "title": "Innstillinger for House State",
-        "description": "Rediger delene og velg deretter Lagre alle endringer. Ingenting endres før du lagrer. Forkast eller lukk for å avbryte. Lagring aktiverer ikke scener.",
+        "description": "Rediger delene og velg deretter Lagre alle endringer. Ingenting endres før du lagrer. Forkast eller lukk for å avbryte. Lagring aktiverer ikke scener. For en oversikt over hele oppsettet, bruk [House State-panelet](/house-state) i sidemenyen.",
         "menu_options": {
           "states": "Tilstander",
           "general": "Starttilstand og roller",

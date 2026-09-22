@@ -34,7 +34,7 @@
     "step": {
       "init": {
         "title": "House State settings",
-        "description": "Edit sections, then choose Save all changes. Nothing is applied until you save. Discard or close to cancel. Saving does not activate scenes.",
+        "description": "Edit sections, then choose Save all changes. Nothing is applied until you save. Discard or close to cancel. Saving does not activate scenes. For an overview of the whole setup, use the [House State panel](/house-state) in the sidebar.",
         "menu_options": {
           "states": "States",
           "general": "Initial state and roles",

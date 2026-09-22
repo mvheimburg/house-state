@@ -5,6 +5,7 @@ from homeassistant.core import SupportsResponse
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service import async_register_platform_entity_service
 
+from . import panel, websocket
 from .const import DOMAIN, PLATFORMS, REASONS
 from .coordinator import HouseCoordinator
 
@@ -67,6 +68,7 @@ async def async_setup(hass, config):
                 SupportsResponse.OPTIONAL if name.startswith("visit_") else SupportsResponse.NONE
             ),
         )
+    websocket.async_register(hass)
     return True
 
 
@@ -91,6 +93,7 @@ async def async_setup_entry(hass, entry):
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await coordinator.start()
     entry.async_on_unload(entry.add_update_listener(update_options))
+    await panel.async_register(hass)
     return True
 
 
@@ -102,5 +105,12 @@ async def update_options(hass, entry):
 async def async_unload_entry(hass, entry):
     if await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         entry.runtime_data.stop()
+        # Keep the panel through an options reload; drop it with the last entry.
+        if not hass.data.get((DOMAIN, entry.entry_id, "options_reload")) and not [
+            other
+            for other in hass.config_entries.async_loaded_entries(DOMAIN)
+            if other.entry_id != entry.entry_id
+        ]:
+            panel.async_unregister(hass)
         return True
     return False

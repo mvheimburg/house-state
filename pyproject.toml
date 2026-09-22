@@ -1,6 +1,6 @@
 [project]
 name = "house-state"
-version = "0.5.1"
+version = "0.6.0"
 description = "Configurable house state trees, scenes and overlays for Home Assistant"
 readme = "README.md"
 license = { file = "LICENSE" }
