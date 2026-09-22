@@ -9,6 +9,9 @@ from . import panel, websocket
 from .const import DOMAIN, PLATFORMS, REASONS
 from .coordinator import HouseCoordinator
 
+# Set up from config entries only; there is no YAML configuration.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
 # Caller-chosen, so a retried request is recognized; a UUID fits.
 _VISIT_ID = vol.All(str, vol.Match(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$"))
 
